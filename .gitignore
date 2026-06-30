@@ -1,1 +1,4 @@
 json/
+b1_scsv/test_bad_actors.py
+b1_bad_actors.json
+b1_stress_test_batch.json
