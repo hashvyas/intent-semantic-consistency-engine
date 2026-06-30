@@ -1,0 +1,252 @@
+[
+  {
+    "header": {
+      "station_id": 4815162342,
+      "message_id": 1
+    },
+    "cam": {
+      "generation_delta_time": 4000,
+      "cam_parameters": {
+        "basic_container": {
+          "station_type": 5,
+          "reference_position": {
+            "latitude":  485512345,
+            "longitude": 96123456
+          }
+        },
+        "high_frequency_container": {
+          "basic_vehicle_container_high_frequency": {
+            "heading":   900,
+            "speed":    1400,
+            "yaw_rate":    0
+          }
+        }
+      }
+    }
+  },
+  {
+    "header": {
+      "station_id": 1111111111,
+      "message_id": 1
+    },
+    "cam": {
+      "generation_delta_time": 4100,
+      "cam_parameters": {
+        "basic_container": {
+          "station_type": 5,
+          "reference_position": {
+            "latitude":  485513000,
+            "longitude": 96130000
+          }
+        },
+        "high_frequency_container": {
+          "basic_vehicle_container_high_frequency": {
+            "heading":  1800,
+            "speed":    2000,
+            "yaw_rate":   50
+          }
+        }
+      }
+    }
+  },
+  {
+    "header": {
+      "station_id": 2222222222,
+      "message_id": 1
+    },
+    "cam": {
+      "generation_delta_time": 3900,
+      "cam_parameters": {
+        "basic_container": {
+          "station_type": 5,
+          "reference_position": {
+            "latitude":  485500000,
+            "longitude": 96100000
+          }
+        },
+        "high_frequency_container": {
+          "basic_vehicle_container_high_frequency": {
+            "heading":   0,
+            "speed":   500,
+            "yaw_rate":  0
+          }
+        }
+      }
+    }
+  },
+  {
+    "header": {
+      "station_id": 3333333333,
+      "message_id": 1
+    },
+    "cam": {
+      "generation_delta_time": 4050,
+      "cam_parameters": {
+        "basic_container": {
+          "station_type": 5,
+          "reference_position": {
+            "latitude":  485520000,
+            "longitude": 96140000
+          }
+        },
+        "high_frequency_container": {
+          "basic_vehicle_container_high_frequency": {
+            "heading":  2700,
+            "speed":   3000,
+            "yaw_rate": -20
+          }
+        }
+      }
+    }
+  },
+  {
+    "header": {
+      "station_id": 4444444444,
+      "message_id": 1
+    },
+    "cam": {
+      "generation_delta_time": 4200,
+      "cam_parameters": {
+        "basic_container": {
+          "station_type": 5,
+          "reference_position": {
+            "latitude":  485530000,
+            "longitude": 96150000
+          }
+        },
+        "high_frequency_container": {
+          "basic_vehicle_container_high_frequency": {
+            "heading":  900,
+            "speed":   1000,
+            "yaw_rate":  10
+          }
+        }
+      }
+    }
+  },
+  {
+    "header": {
+      "station_id": 5555555555,
+      "message_id": 1
+    },
+    "cam": {
+      "generation_delta_time": 3800,
+      "cam_parameters": {
+        "basic_container": {
+          "station_type": 5,
+          "reference_position": {
+            "latitude":  485540000,
+            "longitude": 96160000
+          }
+        },
+        "high_frequency_container": {
+          "basic_vehicle_container_high_frequency": {
+            "heading":  1350,
+            "speed":   2500,
+            "yaw_rate":  -5
+          }
+        }
+      }
+    }
+  },
+  {
+    "header": {
+      "station_id": 6666666666,
+      "message_id": 1
+    },
+    "cam": {
+      "generation_delta_time": 4000,
+      "cam_parameters": {
+        "basic_container": {
+          "station_type": 5,
+          "reference_position": {
+            "latitude":  485510000,
+            "longitude": 96110000
+          }
+        },
+        "high_frequency_container": {
+          "basic_vehicle_container_high_frequency": {
+            "heading":   450,
+            "speed":   1800,
+            "yaw_rate":  25
+          }
+        }
+      }
+    }
+  },
+  {
+    "header": {
+      "station_id": 7777777777,
+      "message_id": 1
+    },
+    "cam": {
+      "generation_delta_time": 4000,
+      "cam_parameters": {
+        "basic_container": {
+          "station_type": 5,
+          "reference_position": {
+            "latitude":  485515000,
+            "longitude": 96115000
+          }
+        },
+        "high_frequency_container": {
+          "basic_vehicle_container_high_frequency": {
+            "heading":  2250,
+            "speed":   1600,
+            "yaw_rate":   0
+          }
+        }
+      }
+    }
+  },
+  {
+    "header": {
+      "station_id": 8888888888,
+      "message_id": 1
+    },
+    "cam": {
+      "generation_delta_time": 4000,
+      "cam_parameters": {
+        "basic_container": {
+          "station_type": 5,
+          "reference_position": {
+            "latitude":  485508000,
+            "longitude": 96108000
+          }
+        },
+        "high_frequency_container": {
+          "basic_vehicle_container_high_frequency": {
+            "heading":  1800,
+            "speed":   2200,
+            "yaw_rate":  -30
+          }
+        }
+      }
+    }
+  },
+  {
+    "header": {
+      "station_id": 9999999999,
+      "message_id": 1
+    },
+    "cam": {
+      "generation_delta_time": 3950,
+      "cam_parameters": {
+        "basic_container": {
+          "station_type": 5,
+          "reference_position": {
+            "latitude":  485525000,
+            "longitude": 96125000
+          }
+        },
+        "high_frequency_container": {
+          "basic_vehicle_container_high_frequency": {
+            "heading":  900,
+            "speed":   700,
+            "yaw_rate":   5
+          }
+        }
+      }
+    }
+  }
+]
