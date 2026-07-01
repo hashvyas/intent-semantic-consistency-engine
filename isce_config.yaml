@@ -280,3 +280,105 @@ b1_scsv:
       action: block
       score: 0.0
       note: "Station type 0 (unknown) – identity unverifiable; block all."
+
+# ---------------------------------------------------------------------------
+# B2 – Cluster Semantic Invariance Analysis (CSIA) – Research Grade v2
+#
+# Four-stage pipeline:
+#   1. Spatio-Temporal Pre-Clustering  (Haversine radius + sliding ns window)
+#   2a. Kinematic Engine               (Mahalanobis / Weighted Euclidean)
+#   2b. CAM Semantic Engine            (Hamming similarity on categorical fields)
+#   3.  Temporal Entropy Engine        (Shannon entropy of inter-arrival times)
+#   4.  Score Fusion                   (weighted sum → [0.0, 1.0])
+#
+# Score convention (same as B1):
+#   0.0  → highly suspicious / coordinated attack detected
+#   1.0  → benign / messages appear kinematically independent
+#
+# References:
+#   ETSI TR 103 460  – Misbehaviour Detection in ITS
+#   ETSI EN 302 637-2 – Cooperative Awareness Message (CAM) specification
+# ---------------------------------------------------------------------------
+b2_csia:
+
+  # ── Cluster formation ────────────────────────────────────────────────────
+  # Minimum number of messages in a spatio-temporal cluster to run analysis.
+  # Clusters smaller than this are dropped; if no cluster qualifies, 1.0 is
+  # returned (insufficient data → benign).
+  min_cluster_size: 3
+
+  # Haversine spatial radius (metres) for grouping messages into neighbourhoods.
+  # Two messages are spatially adjacent if their Haversine distance < radius.
+  spatial_radius_m: 100.0
+
+  # Observation window duration in nanoseconds.  Two messages are temporally
+  # adjacent if |Δtimestamp| ≤ window_size_ns.
+  # 1 000 000 000 ns = 1 second.  Timestamps in the CAM field
+  # generation_delta_time are in milliseconds; use ns-unit values when testing
+  # for meaningful temporal scoring.
+  window_size_ns: 1000000000
+
+  # ── Position & timestamp routing fields ──────────────────────────────────
+  # These dot-paths are used *only* for cluster formation – they are NOT part
+  # of the kinematic feature vector.
+  position_lat_field: "cam.cam_parameters.basic_container.reference_position.latitude"
+  position_lon_field: "cam.cam_parameters.basic_container.reference_position.longitude"
+  timestamp_field:    "cam.generation_delta_time"
+
+  # ── Kinematic feature fields (Stage 2a engine) ───────────────────────────
+  # Dot-paths extracted into the kinematic feature vector.
+  # Missing fields default to 0.0 (safe degradation).
+  kinematic_fields:
+    - "cam.cam_parameters.high_frequency_container.basic_vehicle_container_high_frequency.speed"
+    - "cam.cam_parameters.high_frequency_container.basic_vehicle_container_high_frequency.heading"
+    - "cam.cam_parameters.high_frequency_container.basic_vehicle_container_high_frequency.yaw_rate"
+    - "cam.cam_parameters.high_frequency_container.basic_vehicle_container_high_frequency.steering_wheel_angle"
+    - "cam.cam_parameters.high_frequency_container.basic_vehicle_container_high_frequency.lateral_acceleration"
+    - "cam.cam_parameters.high_frequency_container.basic_vehicle_container_high_frequency.longitudinal_acceleration"
+
+  # ── CAM semantic / structural fields (Stage 2b Hamming engine) ───────────
+  # Raw categorical values.  Identical fingerprints across distinct station_ids
+  # in the same cluster raise suspicion.
+  semantic_fields:
+    - "cam.cam_parameters.basic_container.station_type"
+    - "header.station_id"
+
+  # ── Mahalanobis distance settings ────────────────────────────────────────
+  # Minimum cluster size to attempt Mahalanobis distance.  Below this, or when
+  # the covariance matrix is singular (condition > 1e12), falls back to plain
+  # Euclidean on the robust-scaled data (equivalent to Weighted Euclidean in the
+  # original feature space).
+  mahalanobis_min_samples: 4
+
+  # ── Robust scaling fallback IQR denominators ─────────────────────────────
+  # When IQR = 0 for a column (zero-variance feature), the fallback_range
+  # provides a reference denominator so the scaled value stays bounded.
+  # Keys match kinematic_fields entries exactly.
+  fallback_ranges:
+    "cam.cam_parameters.high_frequency_container.basic_vehicle_container_high_frequency.speed":                   16383   # 0.01 m/s; max CAM speed
+    "cam.cam_parameters.high_frequency_container.basic_vehicle_container_high_frequency.heading":                 3600    # 0.1°; 0–360°
+    "cam.cam_parameters.high_frequency_container.basic_vehicle_container_high_frequency.yaw_rate":                32766   # 0.01 °/s; ±163.83°/s
+    "cam.cam_parameters.high_frequency_container.basic_vehicle_container_high_frequency.steering_wheel_angle":    1023    # 0.1°; ±51.1° range
+    "cam.cam_parameters.high_frequency_container.basic_vehicle_container_high_frequency.lateral_acceleration":    2000    # 0.01 m/s²; ±20 m/s²
+    "cam.cam_parameters.high_frequency_container.basic_vehicle_container_high_frequency.longitudinal_acceleration": 2000  # 0.01 m/s²; ±20 m/s²
+
+  # ── Adaptive kinematic distance thresholds ───────────────────────────────
+  # Highway (median cluster speed ≥ highway_speed_threshold) uses a tighter
+  # threshold; city grids use a wider one.
+  # Units: Euclidean distance in robust-scaled feature space (dimensionless).
+  highway_speed_threshold:      2000    # 0.01 m/s → 20 m/s = 72 km/h
+  highway_kinematic_threshold:  0.20    # tight — highway uniformity is expected;
+                                        # clones must be < this to be flagged
+  city_kinematic_threshold:     0.50    # wider — city traffic is naturally diverse
+  kinematic_cap_multiplier:     6.0     # trust = 1.0 at distance = threshold × cap
+
+  # ── Temporal entropy (Stage 3 engine) ────────────────────────────────────
+  # Number of bins for the inter-arrival time histogram.
+  temporal_entropy_bins: 8
+
+  # ── Score fusion weights (must sum to 1.0) ───────────────────────────────
+  weight_kinematic: 0.55   # dominant: kinematic coherence is the primary signal
+  weight_semantic:  0.20   # structural CAM fingerprint similarity
+  weight_timing:    0.25   # transmission inter-arrival entropy
+
+
