@@ -492,13 +492,13 @@ def _semantic_trust(
 # Stage 3 – Temporal Entropy Engine
 # ===========================================================================
 
-def _temporal_entropy_trust(
+def _temporal_entropy_detail(
     messages: List[dict],
     ts_field: str,
     n_bins: int,
     window_size_ns: float,
-) -> float:
-    """Compute temporal trust from inter-arrival time distribution.
+) -> Tuple[float, float]:
+    """Compute temporal trust and raw entropy from inter-arrival time distribution.
 
     Combines two complementary signals:
 
@@ -523,10 +523,14 @@ def _temporal_entropy_trust(
 
     Returns
     -------
-    float
+    timing_trust : float
         Temporal trust ∈ [0.0, 1.0].
         0.0 → perfectly synchronised machine burst.
         1.0 → natural, high-entropy inter-arrival distribution.
+    entropy_score : float
+        Normalised Shannon entropy component ∈ [0.0, 1.0].  Exported
+        directly as the ``"entropy"`` key of the check() payload so
+        callers can observe the raw inter-arrival randomness.
     """
     timestamps: List[float] = []
     for m in messages:
@@ -537,7 +541,7 @@ def _temporal_entropy_trust(
             timestamps.append(ts)
 
     if len(timestamps) < 2:
-        return 1.0  # Insufficient data → treat as benign
+        return 1.0, 0.0  # Insufficient data → treat as benign
 
     timestamps.sort()
     time_spread = timestamps[-1] - timestamps[0]
@@ -547,13 +551,13 @@ def _temporal_entropy_trust(
     spread_score = float(min(1.0, time_spread / window))
 
     if time_spread == 0.0:
-        return 0.0  # Machine burst: perfect synchronisation
+        return 0.0, 0.0  # Machine burst: perfect synchronisation
 
     # ── Inter-arrival entropy ──────────────────────────────────────────────
     deltas = [timestamps[k + 1] - timestamps[k] for k in range(len(timestamps) - 1)]
 
     if not deltas:
-        return spread_score  # Only one unique interval
+        return spread_score, 0.0  # Only one unique interval
 
     min_d, max_d = min(deltas), max(deltas)
 
@@ -577,7 +581,24 @@ def _temporal_entropy_trust(
         max_entropy   = math.log2(n_bins) if n_bins > 1 else 1.0
         entropy_score = float(min(1.0, max(0.0, entropy / max_entropy)))
 
-    return float(min(1.0, max(0.0, 0.6 * spread_score + 0.4 * entropy_score)))
+    timing_trust = float(min(1.0, max(0.0, 0.6 * spread_score + 0.4 * entropy_score)))
+    return timing_trust, entropy_score
+
+
+# ---------------------------------------------------------------------------
+# Default benign-state payload – returned when insufficient data is present
+# to form an analysable cluster.  trust/cluster_score/identity_consistency
+# are 1.0 (fully trusted); entropy and replay_probability are 0.0 (no
+# anomaly signal).
+# ---------------------------------------------------------------------------
+
+_BENIGN_PAYLOAD: Dict[str, float] = {
+    "trust":               1.0,
+    "entropy":             0.0,
+    "cluster_score":       1.0,
+    "replay_probability":  0.0,
+    "identity_consistency": 1.0,
+}
 
 
 # ===========================================================================
@@ -676,7 +697,7 @@ class CSIA:
     # Public API
     # -----------------------------------------------------------------------
 
-    def check(self, messages: List[Dict[str, Any]]) -> float:
+    def check(self, messages: List[Dict[str, Any]]) -> Dict[str, float]:
         """Analyse a window of decoded CAM messages for coordinated behaviour.
 
         Parameters
@@ -687,29 +708,47 @@ class CSIA:
 
         Returns
         -------
-        float
-            Trust score ∈ [0.0, 1.0].
-            1.0 → benign; messages appear kinematically independent.
-            0.0 → highly suspicious; coordinated / Sybil behaviour detected.
+        dict
+            Structured payload with the following five keys:
+
+            ``trust``
+                Final fused confidence probability ∈ [0.0, 1.0].
+                1.0 → benign; 0.0 → highly suspicious.
+                Formula: 0.55×kinematic + 0.20×semantic + 0.25×timing.
+            ``entropy``
+                Normalised Shannon inter-arrival entropy ∈ [0.0, 1.0].
+                Raw output of the Temporal Entropy Engine (Stage 3).
+            ``cluster_score``
+                Kinematic trust from Stage 2a ∈ [0.0, 1.0].  Computed via
+                Robust Scaling and Mahalanobis / Weighted Euclidean distance.
+            ``replay_probability``
+                Likelihood of machine-synchronised transmission replay
+                ∈ [0.0, 1.0].  Defined as ``1.0 − timing_trust``.
+            ``identity_consistency``
+                Structural CAM metadata metric ∈ [0.0, 1.0].  Measures
+                sender diversity based on station_type / station_id patterns
+                (Stage 2b Hamming engine).
 
         Notes
         -----
-        * Returns 1.0 (insufficient data) when the window is smaller than
-          ``max(min_cluster_size, 2)``.
-        * If spatio-temporal clustering yields no cluster ≥ min_cluster_size,
-          returns 1.0.
-        * The score of the *most suspicious* cluster is returned when multiple
-          clusters exist.
+        * Returns the benign default payload when the window is smaller than
+          ``max(min_cluster_size, 2)`` or when no valid cluster forms.
+          Benign defaults: trust=1.0, cluster_score=1.0,
+          identity_consistency=1.0, entropy=0.0, replay_probability=0.0.
+        * The payload of the *most suspicious* cluster (lowest ``trust``) is
+          returned when multiple clusters exist.
         """
         effective_min = max(self._min_cluster_size, 2)
         if len(messages) < effective_min:
-            logger.debug("CSIA: window %d < min %d → 1.0", len(messages), effective_min)
-            return 1.0
+            logger.debug(
+                "CSIA: window %d < min %d → benign payload", len(messages), effective_min
+            )
+            return dict(_BENIGN_PAYLOAD)
 
         # Strip non-dict entries
         valid: List[dict] = [m for m in messages if isinstance(m, dict) and m]
         if len(valid) < 2:
-            return 1.0
+            return dict(_BENIGN_PAYLOAD)
 
         # ── Stage 1: Spatio-temporal clustering ───────────────────────────
         clusters = _build_clusters(
@@ -723,20 +762,30 @@ class CSIA:
 
         large = [c for c in clusters if len(c) >= max(self._min_cluster_size, 2)]
         if not large:
-            logger.debug("CSIA: no cluster ≥ min_cluster_size → 1.0")
-            return 1.0
+            logger.debug("CSIA: no cluster ≥ min_cluster_size → benign payload")
+            return dict(_BENIGN_PAYLOAD)
 
-        scores = [self._analyse_cluster(c) for c in large]
-        final  = float(min(scores))  # most suspicious cluster wins
-        logger.debug("CSIA: cluster_scores=%s → final=%.4f", scores, final)
-        return final
+        payloads = [self._analyse_cluster(c) for c in large]
+        result   = min(payloads, key=lambda p: p["trust"])  # most suspicious wins
+        logger.debug(
+            "CSIA: cluster_trusts=%s → final=%.4f",
+            [p["trust"] for p in payloads], result["trust"],
+        )
+        return result
 
     # -----------------------------------------------------------------------
     # Private – per-cluster analysis
     # -----------------------------------------------------------------------
 
-    def _analyse_cluster(self, cluster: List[dict]) -> float:
-        """Run Stages 2a/2b/3/4 on one spatio-temporal cluster."""
+    def _analyse_cluster(self, cluster: List[dict]) -> Dict[str, float]:
+        """Run Stages 2a/2b/3/4 on one spatio-temporal cluster.
+
+        Returns
+        -------
+        dict
+            Structured payload with keys: trust, entropy, cluster_score,
+            replay_probability, identity_consistency.
+        """
 
         # ── Stage 2a: Kinematic engine ────────────────────────────────────
         kin_trust = self._kinematic_trust(cluster)
@@ -745,7 +794,7 @@ class CSIA:
         sem_trust = _semantic_trust(cluster, self._semantic_fields)
 
         # ── Stage 3: Temporal entropy ─────────────────────────────────────
-        tim_trust = _temporal_entropy_trust(
+        tim_trust, entropy_score = _temporal_entropy_detail(
             cluster, self._ts_field, self._entropy_bins, self._window_size_ns,
         )
 
@@ -755,13 +804,20 @@ class CSIA:
             + self._w_sem * sem_trust
             + self._w_tim * tim_trust
         )
-        result = float(min(1.0, max(0.0, combined)))
+        trust = float(min(1.0, max(0.0, combined)))
 
         logger.debug(
-            "CSIA cluster n=%d: kin=%.4f sem=%.4f tim=%.4f → %.4f",
-            len(cluster), kin_trust, sem_trust, tim_trust, result,
+            "CSIA cluster n=%d: kin=%.4f sem=%.4f tim=%.4f entropy=%.4f → %.4f",
+            len(cluster), kin_trust, sem_trust, tim_trust, entropy_score, trust,
         )
-        return result
+
+        return {
+            "trust":                trust,
+            "entropy":              float(entropy_score),
+            "cluster_score":        float(kin_trust),
+            "replay_probability":   float(min(1.0, max(0.0, 1.0 - tim_trust))),
+            "identity_consistency": float(sem_trust),
+        }
 
     def _kinematic_trust(self, cluster: List[dict]) -> float:
         """Extract kinematic vectors, robust-scale, distance → trust."""
