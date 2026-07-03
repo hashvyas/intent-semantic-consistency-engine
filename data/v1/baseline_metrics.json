@@ -1,0 +1,150 @@
+{
+  "random_state_seed": 42,
+  "features_list": [
+    "b2_trust",
+    "b2_entropy",
+    "b2_cluster_score",
+    "b2_replay_probability",
+    "b2_identity_consistency",
+    "cam_speed",
+    "cam_heading",
+    "cam_longitudinal_acceleration",
+    "cam_lateral_acceleration",
+    "cam_yaw_rate",
+    "spatial_offset",
+    "perception_camera",
+    "perception_radar",
+    "perception_lidar",
+    "num_peer_reports",
+    "num_rsu_messages",
+    "history_avg_speed",
+    "history_avg_heading",
+    "history_speed_trend"
+  ],
+  "feature_importances": [
+    {
+      "feature": "cam_speed",
+      "importance": 0.18825727053533847
+    },
+    {
+      "feature": "history_avg_speed",
+      "importance": 0.15461252478586918
+    },
+    {
+      "feature": "spatial_offset",
+      "importance": 0.14940055132562907
+    },
+    {
+      "feature": "b2_trust",
+      "importance": 0.10641200573573417
+    },
+    {
+      "feature": "b2_cluster_score",
+      "importance": 0.09197542836198934
+    },
+    {
+      "feature": "history_avg_heading",
+      "importance": 0.07029167374717471
+    },
+    {
+      "feature": "b2_replay_probability",
+      "importance": 0.05329343367590906
+    },
+    {
+      "feature": "num_peer_reports",
+      "importance": 0.050736030160392825
+    },
+    {
+      "feature": "b2_entropy",
+      "importance": 0.0422159639717815
+    },
+    {
+      "feature": "b2_identity_consistency",
+      "importance": 0.0395231325477651
+    },
+    {
+      "feature": "num_rsu_messages",
+      "importance": 0.02192073569014065
+    },
+    {
+      "feature": "cam_longitudinal_acceleration",
+      "importance": 0.013241562565132696
+    },
+    {
+      "feature": "perception_lidar",
+      "importance": 0.007950448064936952
+    },
+    {
+      "feature": "perception_radar",
+      "importance": 0.0058851358935511034
+    },
+    {
+      "feature": "perception_camera",
+      "importance": 0.004284102938655157
+    },
+    {
+      "feature": "cam_heading",
+      "importance": 0.0
+    },
+    {
+      "feature": "cam_lateral_acceleration",
+      "importance": 0.0
+    },
+    {
+      "feature": "cam_yaw_rate",
+      "importance": 0.0
+    },
+    {
+      "feature": "history_speed_trend",
+      "importance": 0.0
+    }
+  ],
+  "evaluation_metrics": {
+    "validation": {
+      "accuracy": 0.9,
+      "precision_macro": 0.9166666666666666,
+      "recall_macro": 0.9166666666666666,
+      "f1_macro": 0.9166666666666666,
+      "confusion_matrix": [
+        [
+          2,
+          0,
+          0
+        ],
+        [
+          0,
+          5,
+          1
+        ],
+        [
+          0,
+          1,
+          11
+        ]
+      ]
+    },
+    "test": {
+      "accuracy": 0.9,
+      "precision_macro": 0.9166666666666666,
+      "recall_macro": 0.9166666666666666,
+      "f1_macro": 0.9166666666666666,
+      "confusion_matrix": [
+        [
+          2,
+          0,
+          0
+        ],
+        [
+          0,
+          5,
+          1
+        ],
+        [
+          0,
+          1,
+          11
+        ]
+      ]
+    }
+  }
+}

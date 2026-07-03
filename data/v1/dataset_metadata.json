@@ -1,0 +1,69 @@
+{
+  "dataset_version": "v1",
+  "total_sample_count": 100,
+  "seed": 42,
+  "verification_timestamp": "2026-07-02T10:36:59Z",
+  "token_statistics": {
+    "max_length": 381.0,
+    "average_length": 354.5,
+    "percentile_95": 381.0,
+    "exceeded_context_count": 0
+  },
+  "split_distributions": {
+    "train": {
+      "count": 80,
+      "counts": {
+        "ACCEPT": 8,
+        "CAUTION": 24,
+        "REJECT": 48
+      },
+      "proportions": {
+        "ACCEPT": 0.1,
+        "CAUTION": 0.3,
+        "REJECT": 0.6
+      }
+    },
+    "val": {
+      "count": 20,
+      "counts": {
+        "ACCEPT": 2,
+        "CAUTION": 6,
+        "REJECT": 12
+      },
+      "proportions": {
+        "ACCEPT": 0.1,
+        "CAUTION": 0.3,
+        "REJECT": 0.6
+      }
+    },
+    "test": {
+      "count": 20,
+      "counts": {
+        "ACCEPT": 2,
+        "CAUTION": 6,
+        "REJECT": 12
+      },
+      "proportions": {
+        "ACCEPT": 0.1,
+        "CAUTION": 0.3,
+        "REJECT": 0.6
+      }
+    }
+  },
+  "overall_distribution": {
+    "counts": {
+      "ACCEPT": 10,
+      "CAUTION": 30,
+      "REJECT": 60
+    },
+    "proportions": {
+      "ACCEPT": 0.1,
+      "CAUTION": 0.3,
+      "REJECT": 0.6
+    }
+  },
+  "reproducibility": {
+    "system_prompt_len_chars": 1764,
+    "max_context_window": 512
+  }
+}

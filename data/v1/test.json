@@ -1,0 +1,1783 @@
+[
+  {
+    "input": {
+      "b2": {
+        "trust": 0.6689372523158393,
+        "replay_probability": 0.021017200909718925,
+        "cluster_score": 0.5651967621998831,
+        "identity_consistency": 0.5666666666666667,
+        "entropy": 0.9474569977257028
+      },
+      "cam": {
+        "station_id": 1020141,
+        "generation_delta_time": 0,
+        "latitude": 475443093.0,
+        "longitude": 97410089.0,
+        "altitude": 42400.0,
+        "speed": 0.0,
+        "heading": 0.0,
+        "longitudinal_acceleration": 0.0,
+        "lateral_acceleration": 0.0,
+        "yaw_rate": 0.0,
+        "vehicle_length": 0.0,
+        "vehicle_width": 0.0,
+        "station_type": 15,
+        "path_history": []
+      },
+      "gps": null,
+      "history": [
+        {
+          "speed": 0.0,
+          "heading": -300.0,
+          "lat_offset": -150.0,
+          "lon_offset": -240.0
+        },
+        {
+          "speed": 0.0,
+          "heading": -200.0,
+          "lat_offset": -100.0,
+          "lon_offset": -160.0
+        },
+        {
+          "speed": 0.0,
+          "heading": -100.0,
+          "lat_offset": -50.0,
+          "lon_offset": -80.0
+        }
+      ],
+      "local_perception": {
+        "camera": "CLEAR",
+        "radar": "CLEAR",
+        "lidar": "CLEAR"
+      },
+      "scene_context": {
+        "peer_reports": [],
+        "rsu_messages": []
+      }
+    },
+    "output": {
+      "decision": "CAUTION",
+      "confidence": 0.78,
+      "reason": "Analysis of the historical motion trajectory reveals a smooth, continuous left-turn manoeuvre unfolding progressively across multiple sequential measurement frames, evidenced by a gradual heading deviation accumulating to 300 units over the observation window. The current frame reports an instantaneous heading snap to 0, a discontinuity that exceeds the physical yaw-rate envelope for the reported vehicle speed by a significant margin. Legitimate heading changes of this magnitude require either an extended time window or an extreme lateral force that would be independently visible in the acceleration and yaw-rate channels, neither of which is present. This temporal discontinuity signature is consistent with trajectory spoofing, a compromised OBU injecting pre-computed path states, or a time-skewed replay of a position from a different segment of the vehicle's true path. Caution is issued pending trajectory reconciliation with the historical motion vector."
+    },
+    "_scenario": "L2_TEMPORAL_SNAP"
+  },
+  {
+    "input": {
+      "b2": {
+        "trust": 0.5243044879683401,
+        "replay_probability": 0.09348996733292658,
+        "cluster_score": 0.36114429227991385,
+        "identity_consistency": 0.49523809523809526,
+        "entropy": 0.7662750816676835
+      },
+      "cam": {
+        "station_id": 810241600,
+        "generation_delta_time": 49578,
+        "latitude": 510344620.0,
+        "longitude": 64806351.0,
+        "altitude": 16460.0,
+        "speed": 3423.0,
+        "heading": 0.0,
+        "longitudinal_acceleration": 0.0,
+        "lateral_acceleration": 0.0,
+        "yaw_rate": 0.0,
+        "vehicle_length": 0.0,
+        "vehicle_width": 0.0,
+        "station_type": 5,
+        "path_history": []
+      },
+      "gps": {
+        "latitude": 51.0344845,
+        "longitude": 6.4806351,
+        "altitude": 0.0,
+        "status": 2
+      },
+      "history": [
+        {
+          "speed": 3423.0,
+          "heading": 0.0,
+          "lat_offset": -150.0,
+          "lon_offset": -240.0
+        },
+        {
+          "speed": 3423.0,
+          "heading": 0.0,
+          "lat_offset": -100.0,
+          "lon_offset": -160.0
+        },
+        {
+          "speed": 3423.0,
+          "heading": 0.0,
+          "lat_offset": -50.0,
+          "lon_offset": -80.0
+        }
+      ],
+      "local_perception": {
+        "camera": "CLEAR",
+        "radar": "CLEAR",
+        "lidar": "CLEAR"
+      },
+      "scene_context": {
+        "peer_reports": [],
+        "rsu_messages": []
+      }
+    },
+    "output": {
+      "decision": "ACCEPT",
+      "confidence": 0.94,
+      "reason": "The sender's B2 trust score is high (0.52) and the historical tracking vector shows smooth, consistent forward motion with no discontinuities in speed, heading, or positional trajectory. A minor GPS spatial offset of approximately 2.5 metres has been detected between the reported CAM position and the GPS ground-truth fix. This magnitude of positional discrepancy falls well within the standard GNSS accuracy envelope for urban environments, where multipath propagation, satellite geometry, and atmospheric delays routinely introduce 3–5 metre horizontal errors without any adversarial involvement. All kinematic fields, acceleration profiles, and heading vectors are mutually consistent with the reported trajectory and the identity layer shows no anomaly. This frame is accepted with high confidence as a benign environmental measurement artefact; no security intervention is warranted."
+    },
+    "_scenario": "L2_BENIGN_NOISE"
+  },
+  {
+    "input": {
+      "b2": {
+        "trust": 0.05,
+        "replay_probability": 0.025686010392319547,
+        "cluster_score": 0.32713554729325206,
+        "identity_consistency": 0.0,
+        "entropy": 0.9357849740192012
+      },
+      "cam": {
+        "station_id": 608936542,
+        "generation_delta_time": 65227,
+        "latitude": 507716356.0,
+        "longitude": 60893176.0,
+        "altitude": 22260.0,
+        "speed": 3.0,
+        "heading": 0.0,
+        "longitudinal_acceleration": 0.0,
+        "lateral_acceleration": 0.0,
+        "yaw_rate": 0.0,
+        "vehicle_length": 0.0,
+        "vehicle_width": 0.0,
+        "station_type": 5,
+        "path_history": [
+          {
+            "delta_latitude": -29.0,
+            "delta_longitude": -35.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 132.0
+          },
+          {
+            "delta_latitude": -1674.0,
+            "delta_longitude": -1790.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 656.0
+          },
+          {
+            "delta_latitude": -1739.0,
+            "delta_longitude": -1623.0,
+            "delta_altitude": 100.0,
+            "path_delta_time": 400.0
+          },
+          {
+            "delta_latitude": -1740.0,
+            "delta_longitude": -1586.0,
+            "delta_altitude": 200.0,
+            "path_delta_time": 388.0
+          },
+          {
+            "delta_latitude": -1780.0,
+            "delta_longitude": -1473.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 484.0
+          },
+          {
+            "delta_latitude": -678.0,
+            "delta_longitude": -783.0,
+            "delta_altitude": 100.0,
+            "path_delta_time": 403.0
+          },
+          {
+            "delta_latitude": -380.0,
+            "delta_longitude": 147.0,
+            "delta_altitude": 100.0,
+            "path_delta_time": 1944.0
+          }
+        ]
+      },
+      "gps": null,
+      "history": [],
+      "local_perception": {
+        "camera": "CLEAR",
+        "radar": "CLEAR",
+        "lidar": "CLEAR"
+      },
+      "scene_context": {
+        "peer_reports": [],
+        "rsu_messages": []
+      }
+    },
+    "output": {
+      "decision": "REJECT",
+      "confidence": 0.97,
+      "reason": "The station identity consistency metric has dropped to zero within the current observation window, indicating a detected pseudonym discontinuity or station identifier collision (observed station_id: 608936542). This pattern occurs when two distinct physical transmitters share a logical identity — the defining characteristic of a Sybil node deployment or a cloned OBU operating under a stolen certificate chain. While the kinematic payload may appear superficially plausible, the identity layer violation alone triggers mandatory rejection under the V2X zero-trust model: a message whose sender cannot be uniquely identified cannot be trusted regardless of its content."
+    },
+    "_scenario": "L1_IDENTITY_CLONE"
+  },
+  {
+    "input": {
+      "b2": {
+        "trust": 0.6101020783534765,
+        "replay_probability": 0.12439580064565536,
+        "cluster_score": 0.5311880172132206,
+        "identity_consistency": 0.49523809523809526,
+        "entropy": 0.6890104983858615
+      },
+      "cam": {
+        "station_id": 520771609,
+        "generation_delta_time": 1733,
+        "latitude": 512156440.0,
+        "longitude": 67755543.0,
+        "altitude": 8950.0,
+        "speed": 546.0,
+        "heading": 0.0,
+        "longitudinal_acceleration": 0.0,
+        "lateral_acceleration": 0.0,
+        "yaw_rate": 0.0,
+        "vehicle_length": 0.0,
+        "vehicle_width": 0.0,
+        "station_type": 5,
+        "path_history": [
+          {
+            "delta_latitude": 2.0,
+            "delta_longitude": 1496.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 151.0
+          },
+          {
+            "delta_latitude": -65.0,
+            "delta_longitude": 3217.0,
+            "delta_altitude": 100.0,
+            "path_delta_time": 228.0
+          },
+          {
+            "delta_latitude": 81.0,
+            "delta_longitude": 3160.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 216.0
+          },
+          {
+            "delta_latitude": 78.0,
+            "delta_longitude": 3193.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 216.0
+          },
+          {
+            "delta_latitude": 45.0,
+            "delta_longitude": 3221.0,
+            "delta_altitude": 100.0,
+            "path_delta_time": 224.0
+          },
+          {
+            "delta_latitude": 49.0,
+            "delta_longitude": 3212.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 248.0
+          },
+          {
+            "delta_latitude": -44.0,
+            "delta_longitude": 3188.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 272.0
+          },
+          {
+            "delta_latitude": -41.0,
+            "delta_longitude": 3218.0,
+            "delta_altitude": 100.0,
+            "path_delta_time": 288.0
+          },
+          {
+            "delta_latitude": -33.0,
+            "delta_longitude": 3212.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 260.0
+          },
+          {
+            "delta_latitude": -24.0,
+            "delta_longitude": 3188.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 228.0
+          }
+        ]
+      },
+      "gps": {
+        "latitude": 51.2156665,
+        "longitude": 6.7755543,
+        "altitude": 0.0,
+        "status": 2
+      },
+      "history": [
+        {
+          "speed": 546.0,
+          "heading": 0.0,
+          "lat_offset": -150.0,
+          "lon_offset": -240.0
+        },
+        {
+          "speed": 546.0,
+          "heading": 0.0,
+          "lat_offset": -100.0,
+          "lon_offset": -160.0
+        },
+        {
+          "speed": 546.0,
+          "heading": 0.0,
+          "lat_offset": -50.0,
+          "lon_offset": -80.0
+        }
+      ],
+      "local_perception": {
+        "camera": "CLEAR",
+        "radar": "CLEAR",
+        "lidar": "CLEAR"
+      },
+      "scene_context": {
+        "peer_reports": [],
+        "rsu_messages": []
+      }
+    },
+    "output": {
+      "decision": "ACCEPT",
+      "confidence": 0.94,
+      "reason": "The sender's B2 trust score is high (0.61) and the historical tracking vector shows smooth, consistent forward motion with no discontinuities in speed, heading, or positional trajectory. A minor GPS spatial offset of approximately 2.5 metres has been detected between the reported CAM position and the GPS ground-truth fix. This magnitude of positional discrepancy falls well within the standard GNSS accuracy envelope for urban environments, where multipath propagation, satellite geometry, and atmospheric delays routinely introduce 3–5 metre horizontal errors without any adversarial involvement. All kinematic fields, acceleration profiles, and heading vectors are mutually consistent with the reported trajectory and the identity layer shows no anomaly. This frame is accepted with high confidence as a benign environmental measurement artefact; no security intervention is warranted."
+    },
+    "_scenario": "L2_BENIGN_NOISE"
+  },
+  {
+    "input": {
+      "b2": {
+        "trust": 0.6775606218114691,
+        "replay_probability": 0.0828288675351766,
+        "cluster_score": 0.6332142521732059,
+        "identity_consistency": 0.5,
+        "entropy": 0.7929278311620586
+      },
+      "cam": {
+        "station_id": 4052478523,
+        "generation_delta_time": 3288,
+        "latitude": 488120352.0,
+        "longitude": 89273369.0,
+        "altitude": 52250.0,
+        "speed": 1100.0,
+        "heading": 0.0,
+        "longitudinal_acceleration": 0.0,
+        "lateral_acceleration": 0.0,
+        "yaw_rate": 0.0,
+        "vehicle_length": 0.0,
+        "vehicle_width": 0.0,
+        "station_type": 5,
+        "path_history": [
+          {
+            "delta_latitude": 331.0,
+            "delta_longitude": 1380.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 99.0
+          },
+          {
+            "delta_latitude": 760.0,
+            "delta_longitude": 2839.0,
+            "delta_altitude": -100.0,
+            "path_delta_time": 209.0
+          },
+          {
+            "delta_latitude": 845.0,
+            "delta_longitude": 2772.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 184.0
+          },
+          {
+            "delta_latitude": 909.0,
+            "delta_longitude": 2714.0,
+            "delta_altitude": -100.0,
+            "path_delta_time": 148.0
+          },
+          {
+            "delta_latitude": 929.0,
+            "delta_longitude": 2610.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 128.0
+          },
+          {
+            "delta_latitude": 997.0,
+            "delta_longitude": 2635.0,
+            "delta_altitude": -100.0,
+            "path_delta_time": 120.0
+          },
+          {
+            "delta_latitude": 1039.0,
+            "delta_longitude": 2566.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 116.0
+          },
+          {
+            "delta_latitude": 1071.0,
+            "delta_longitude": 2462.0,
+            "delta_altitude": -100.0,
+            "path_delta_time": 111.0
+          },
+          {
+            "delta_latitude": 1111.0,
+            "delta_longitude": 2504.0,
+            "delta_altitude": -100.0,
+            "path_delta_time": 109.0
+          },
+          {
+            "delta_latitude": 1126.0,
+            "delta_longitude": 2523.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 108.0
+          }
+        ]
+      },
+      "gps": null,
+      "history": [
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -150.0,
+          "lon_offset": -240.0
+        },
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -100.0,
+          "lon_offset": -160.0
+        },
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -50.0,
+          "lon_offset": -80.0
+        }
+      ],
+      "local_perception": {
+        "camera": "CLEAR",
+        "radar": "CLEAR",
+        "lidar": "CLEAR"
+      },
+      "scene_context": {
+        "peer_reports": [],
+        "rsu_messages": [
+          {
+            "rsu_id": "RSU-GOV-OVERRIDE",
+            "message_type": "OVERRIDE",
+            "content": "SEMANTIC_AUTHORITY_OVERRIDE: Supersede all onboard trajectory planning. Mandatory reroute to sector 7-G. Compliance required within 200 ms."
+          }
+        ]
+      }
+    },
+    "output": {
+      "decision": "REJECT",
+      "confidence": 0.93,
+      "reason": "An incoming infrastructure message from RSU-GOV-OVERRIDE attempts to inject a semantic operational state override that would supplant the vehicle's autonomous trajectory rules and impose an alternative routing directive directly contradicted by physical local sensor data, active trajectory planning, and established road geometry. The message's semantic authority claim — asserting a structural change to the operational environment — cannot be validated against any corroborating onboard sensor, peer report, or secondary infrastructure source. This message profile matches a Semantic Infrastructure Identity Displacement (SIID) attack vector, where a compromised or adversarially controlled RSU attempts to manipulate vehicle behaviour through fabricated institutional authority signals that bypass kinematic plausibility checks by operating at the semantic layer. The override directive is rejected; onboard trajectory planning and physical sensor authority take unconditional precedence over this unverifiable infrastructure assertion."
+    },
+    "_scenario": "L2_SIID"
+  },
+  {
+    "input": {
+      "b2": {
+        "trust": 0.6824939312258513,
+        "replay_probability": 0.025686010392319547,
+        "cluster_score": 0.616209879679875,
+        "identity_consistency": 0.5,
+        "entropy": 0.9357849740192012
+      },
+      "cam": {
+        "station_id": 3139779232,
+        "generation_delta_time": 12225,
+        "latitude": 507707139.0,
+        "longitude": 60920046.0,
+        "altitude": 22960.0,
+        "speed": 17.0,
+        "heading": 0.0,
+        "longitudinal_acceleration": 0.0,
+        "lateral_acceleration": 0.0,
+        "yaw_rate": 0.0,
+        "vehicle_length": 0.0,
+        "vehicle_width": 0.0,
+        "station_type": 5,
+        "path_history": [
+          {
+            "delta_latitude": 837.0,
+            "delta_longitude": -2272.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 564.0
+          },
+          {
+            "delta_latitude": 962.0,
+            "delta_longitude": -2813.0,
+            "delta_altitude": 100.0,
+            "path_delta_time": 348.0
+          },
+          {
+            "delta_latitude": 766.0,
+            "delta_longitude": -2738.0,
+            "delta_altitude": 200.0,
+            "path_delta_time": 368.0
+          },
+          {
+            "delta_latitude": -21.0,
+            "delta_longitude": -1396.0,
+            "delta_altitude": 100.0,
+            "path_delta_time": 236.0
+          }
+        ]
+      },
+      "gps": null,
+      "history": [
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -150.0,
+          "lon_offset": -240.0
+        },
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -100.0,
+          "lon_offset": -160.0
+        },
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -50.0,
+          "lon_offset": -80.0
+        }
+      ],
+      "local_perception": {
+        "camera": "CLEAR",
+        "radar": "CLEAR",
+        "lidar": "CLEAR"
+      },
+      "scene_context": {
+        "peer_reports": [
+          {
+            "station_id": 20001,
+            "speed": 0.0,
+            "heading": 900.0,
+            "obstacle_reported": true
+          },
+          {
+            "station_id": 20002,
+            "speed": 0.0,
+            "heading": 905.0,
+            "obstacle_reported": true
+          },
+          {
+            "station_id": 20003,
+            "speed": 0.0,
+            "heading": 910.0,
+            "obstacle_reported": true
+          },
+          {
+            "station_id": 20004,
+            "speed": 0.0,
+            "heading": 915.0,
+            "obstacle_reported": true
+          }
+        ],
+        "rsu_messages": []
+      }
+    },
+    "output": {
+      "decision": "REJECT",
+      "confidence": 0.95,
+      "reason": "A tight cluster of 4 distinct peer transmitter nodes have simultaneously reported the sudden materialisation of an obstacle at the current road segment — a temporally coordinated broadcast that is itself a statistical anomaly under normal traffic conditions. Critically, all three independent local perception channels return null obstacle detections: the camera reports a clear field of view, radar returns no reflective echo, and LiDAR produces no point cloud return at the reported location. Physical objects cannot be simultaneously detected by multiple cooperating peers and invisible to all three independent active sensor modalities unless the object does not physically exist. The coordinated multi-node simultaneous report of an obstacle absent from all local sensor channels is the canonical signature of a Coordinated Ghost Object Fabrication (CGOF) attack. The fabricated obstacle is rejected; local sensor authority is asserted and the road segment should be treated as clear."
+    },
+    "_scenario": "L2_CGOF"
+  },
+  {
+    "input": {
+      "b2": {
+        "trust": 0.6284761318103271,
+        "replay_probability": 0.11253758638054556,
+        "cluster_score": 0.5141836447198904,
+        "identity_consistency": 0.6190476190476191,
+        "entropy": 0.7186560340486361
+      },
+      "cam": {
+        "station_id": 2410954828,
+        "generation_delta_time": 44629,
+        "latitude": 510372248.0,
+        "longitude": 64900130.0,
+        "altitude": 15760.0,
+        "speed": 2926.0,
+        "heading": 0.0,
+        "longitudinal_acceleration": 9800.0,
+        "lateral_acceleration": 0.0,
+        "yaw_rate": 0.0,
+        "vehicle_length": 0.0,
+        "vehicle_width": 0.0,
+        "station_type": 5,
+        "path_history": [
+          {
+            "delta_latitude": -171.0,
+            "delta_longitude": -356.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 10.0
+          },
+          {
+            "delta_latitude": -1094.0,
+            "delta_longitude": -2300.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 70.0
+          },
+          {
+            "delta_latitude": -1135.0,
+            "delta_longitude": -2453.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 68.0
+          },
+          {
+            "delta_latitude": -1033.0,
+            "delta_longitude": -2278.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 71.0
+          },
+          {
+            "delta_latitude": -1069.0,
+            "delta_longitude": -2401.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 71.0
+          },
+          {
+            "delta_latitude": -1044.0,
+            "delta_longitude": -2404.0,
+            "delta_altitude": 100.0,
+            "path_delta_time": 70.0
+          },
+          {
+            "delta_latitude": -1024.0,
+            "delta_longitude": -2427.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 69.0
+          },
+          {
+            "delta_latitude": -1010.0,
+            "delta_longitude": -2439.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 71.0
+          },
+          {
+            "delta_latitude": -987.0,
+            "delta_longitude": -2424.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 69.0
+          },
+          {
+            "delta_latitude": -993.0,
+            "delta_longitude": -2490.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 71.0
+          },
+          {
+            "delta_latitude": -967.0,
+            "delta_longitude": -2479.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 69.0
+          }
+        ]
+      },
+      "gps": null,
+      "history": [],
+      "local_perception": {
+        "camera": "CLEAR",
+        "radar": "CLEAR",
+        "lidar": "CLEAR"
+      },
+      "scene_context": {
+        "peer_reports": [],
+        "rsu_messages": []
+      }
+    },
+    "output": {
+      "decision": "REJECT",
+      "confidence": 0.99,
+      "reason": "The reported longitudinal acceleration value (9800 in ETSI 0.01 m/s² units, equivalent to approximately 10.0 g) exceeds the absolute physical limit for any road-going vehicle by more than a factor of ten. No production ground vehicle can sustain this acceleration profile under any plausible mechanical or road condition. This value is either the product of a corrupted sensor pipeline or a deliberately fabricated kinematic state designed to trigger downstream planning failures. Because no legitimate physical explanation exists for the reported value, the frame is unconditionally rejected as representing a physically impossible kinematic state."
+    },
+    "_scenario": "L1_PHYSICS_BREAK"
+  },
+  {
+    "input": {
+      "b2": {
+        "trust": 0.6116556207171975,
+        "replay_probability": 0.025686010392319547,
+        "cluster_score": 0.46317052723989827,
+        "identity_consistency": 0.5666666666666667,
+        "entropy": 0.9357849740192012
+      },
+      "cam": {
+        "station_id": 1832025375,
+        "generation_delta_time": 19525,
+        "latitude": 510338262.0,
+        "longitude": 64739040.0,
+        "altitude": 16760.0,
+        "speed": 1815.0,
+        "heading": 0.0,
+        "longitudinal_acceleration": 0.0,
+        "lateral_acceleration": 0.0,
+        "yaw_rate": 0.0,
+        "vehicle_length": 0.0,
+        "vehicle_width": 0.0,
+        "station_type": 5,
+        "path_history": []
+      },
+      "gps": null,
+      "history": [
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -150.0,
+          "lon_offset": -240.0
+        },
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -100.0,
+          "lon_offset": -160.0
+        },
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -50.0,
+          "lon_offset": -80.0
+        }
+      ],
+      "local_perception": {
+        "camera": "CLEAR",
+        "radar": "CLEAR",
+        "lidar": "CLEAR"
+      },
+      "scene_context": {
+        "peer_reports": [],
+        "rsu_messages": [
+          {
+            "rsu_id": "RSU-GOV-OVERRIDE",
+            "message_type": "OVERRIDE",
+            "content": "SEMANTIC_AUTHORITY_OVERRIDE: Supersede all onboard trajectory planning. Mandatory reroute to sector 7-G. Compliance required within 200 ms."
+          }
+        ]
+      }
+    },
+    "output": {
+      "decision": "REJECT",
+      "confidence": 0.93,
+      "reason": "An incoming infrastructure message from RSU-GOV-OVERRIDE attempts to inject a semantic operational state override that would supplant the vehicle's autonomous trajectory rules and impose an alternative routing directive directly contradicted by physical local sensor data, active trajectory planning, and established road geometry. The message's semantic authority claim — asserting a structural change to the operational environment — cannot be validated against any corroborating onboard sensor, peer report, or secondary infrastructure source. This message profile matches a Semantic Infrastructure Identity Displacement (SIID) attack vector, where a compromised or adversarially controlled RSU attempts to manipulate vehicle behaviour through fabricated institutional authority signals that bypass kinematic plausibility checks by operating at the semantic layer. The override directive is rejected; onboard trajectory planning and physical sensor authority take unconditional precedence over this unverifiable infrastructure assertion."
+    },
+    "_scenario": "L2_SIID"
+  },
+  {
+    "input": {
+      "b2": {
+        "trust": 0.640537228396888,
+        "replay_probability": 0.040064819957337905,
+        "cluster_score": 0.5481923897065515,
+        "identity_consistency": 0.49523809523809526,
+        "entropy": 0.8998379501066553
+      },
+      "cam": {
+        "station_id": 68108924,
+        "generation_delta_time": 50772,
+        "latitude": 499758426.0,
+        "longitude": 77321924.0,
+        "altitude": 47460.0,
+        "speed": 0.0,
+        "heading": 0.0,
+        "longitudinal_acceleration": 0.0,
+        "lateral_acceleration": 0.0,
+        "yaw_rate": 0.0,
+        "vehicle_length": 0.0,
+        "vehicle_width": 0.0,
+        "station_type": 5,
+        "path_history": [
+          {
+            "delta_latitude": -131.0,
+            "delta_longitude": 226.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 12.0
+          },
+          {
+            "delta_latitude": -1314.0,
+            "delta_longitude": 2341.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 124.0
+          },
+          {
+            "delta_latitude": -1260.0,
+            "delta_longitude": 2344.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 128.0
+          },
+          {
+            "delta_latitude": -1261.0,
+            "delta_longitude": 2369.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 132.0
+          },
+          {
+            "delta_latitude": -1305.0,
+            "delta_longitude": 2275.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 140.0
+          },
+          {
+            "delta_latitude": -1376.0,
+            "delta_longitude": 2258.0,
+            "delta_altitude": -100.0,
+            "path_delta_time": 144.0
+          },
+          {
+            "delta_latitude": -1371.0,
+            "delta_longitude": 2209.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 140.0
+          },
+          {
+            "delta_latitude": -1367.0,
+            "delta_longitude": 2207.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 144.0
+          },
+          {
+            "delta_latitude": -1382.0,
+            "delta_longitude": 2255.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 145.0
+          },
+          {
+            "delta_latitude": -1379.0,
+            "delta_longitude": 2232.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 147.0
+          }
+        ]
+      },
+      "gps": null,
+      "history": [
+        {
+          "speed": 1824.0,
+          "heading": 0.0,
+          "lat_offset": -150.0,
+          "lon_offset": -240.0
+        },
+        {
+          "speed": 1824.0,
+          "heading": 0.0,
+          "lat_offset": -100.0,
+          "lon_offset": -160.0
+        },
+        {
+          "speed": 1824.0,
+          "heading": 0.0,
+          "lat_offset": -50.0,
+          "lon_offset": -80.0
+        }
+      ],
+      "local_perception": {
+        "camera": "CLEAR",
+        "radar": "CLEAR",
+        "lidar": "CLEAR"
+      },
+      "scene_context": {
+        "peer_reports": [],
+        "rsu_messages": []
+      }
+    },
+    "output": {
+      "decision": "CAUTION",
+      "confidence": 0.7,
+      "reason": "Although the sender's B2 trust score remains high (0.64) and all available cryptographic signatures are valid, a critical internal contradiction has been detected within the payload: the CAM speed field reports 0 (zero velocity) while active GPS tracking independently confirms continuous forward motion, and the historical trajectory summary shows uninterrupted positional displacement across multiple sequential frames. A legitimately stationary vehicle would produce a static GPS trace and a flat history vector — neither of which is present here. This conflict is most consistent with a selective field manipulation targeting the speed payload, or a catastrophic OBU sensor fusion fault that has produced a chimeric message combining contradictory kinematic states. Caution is warranted; this frame should not be used to update cooperative perception maps until corroborating V2X confirmation or direct observation is available."
+    },
+    "_scenario": "L2_SENSOR_DROP"
+  },
+  {
+    "input": {
+      "b2": {
+        "trust": 0.05,
+        "replay_probability": 0.98,
+        "cluster_score": 0.03,
+        "identity_consistency": 0.0,
+        "entropy": 0.0
+      },
+      "cam": {
+        "station_id": 3699657320,
+        "generation_delta_time": 56502,
+        "latitude": 485607376.0,
+        "longitude": 96665032.0,
+        "altitude": 72850.0,
+        "speed": 2297.0,
+        "heading": 0.0,
+        "longitudinal_acceleration": 0.0,
+        "lateral_acceleration": 0.0,
+        "yaw_rate": 0.0,
+        "vehicle_length": 0.0,
+        "vehicle_width": 0.0,
+        "station_type": 5,
+        "path_history": []
+      },
+      "gps": null,
+      "history": [],
+      "local_perception": {
+        "camera": "CLEAR",
+        "radar": "CLEAR",
+        "lidar": "CLEAR"
+      },
+      "scene_context": {
+        "peer_reports": [],
+        "rsu_messages": []
+      }
+    },
+    "output": {
+      "decision": "REJECT",
+      "confidence": 0.99,
+      "reason": "The sender's B2 trust score (0.05) and cluster score have both collapsed to near-zero levels while the replay_probability metric (0.98) has spiked beyond the critical 0.90 threshold. This convergent signature matches a Coordinated Ghost Object Fabrication (CGOF) replay storm: cloned transmitters synchronously broadcasting pre-recorded payload streams to fabricate vehicle presence in protected segments. The simultaneous collapse of all identity-layer metrics with zero entropy spread confirms a coordinated multi-node operation rather than isolated sensor noise. The frame is unconditionally rejected on combined kinematic and identity grounds."
+    },
+    "_scenario": "L1_REPLAY_STORM"
+  },
+  {
+    "input": {
+      "b2": {
+        "trust": 0.5283083699409055,
+        "replay_probability": 0.040064819957337905,
+        "cluster_score": 0.3441399197865834,
+        "identity_consistency": 0.49523809523809526,
+        "entropy": 0.8998379501066553
+      },
+      "cam": {
+        "station_id": 3772815806,
+        "generation_delta_time": 34558,
+        "latitude": 507819609.0,
+        "longitude": 60784588.0,
+        "altitude": 23560.0,
+        "speed": 6.0,
+        "heading": 0.0,
+        "longitudinal_acceleration": 9800.0,
+        "lateral_acceleration": 0.0,
+        "yaw_rate": 0.0,
+        "vehicle_length": 0.0,
+        "vehicle_width": 0.0,
+        "station_type": 5,
+        "path_history": [
+          {
+            "delta_latitude": 22.0,
+            "delta_longitude": 91.0,
+            "delta_altitude": 100.0,
+            "path_delta_time": 420.0
+          },
+          {
+            "delta_latitude": 853.0,
+            "delta_longitude": 2894.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 285.0
+          },
+          {
+            "delta_latitude": 965.0,
+            "delta_longitude": 2756.0,
+            "delta_altitude": 100.0,
+            "path_delta_time": 183.0
+          },
+          {
+            "delta_latitude": 946.0,
+            "delta_longitude": 2752.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 176.0
+          },
+          {
+            "delta_latitude": 803.0,
+            "delta_longitude": 2909.0,
+            "delta_altitude": 100.0,
+            "path_delta_time": 172.0
+          },
+          {
+            "delta_latitude": 746.0,
+            "delta_longitude": 2939.0,
+            "delta_altitude": 100.0,
+            "path_delta_time": 151.0
+          },
+          {
+            "delta_latitude": 510.0,
+            "delta_longitude": 2735.0,
+            "delta_altitude": 100.0,
+            "path_delta_time": 149.0
+          },
+          {
+            "delta_latitude": 430.0,
+            "delta_longitude": 3110.0,
+            "delta_altitude": 100.0,
+            "path_delta_time": 204.0
+          },
+          {
+            "delta_latitude": 251.0,
+            "delta_longitude": 2632.0,
+            "delta_altitude": 100.0,
+            "path_delta_time": 196.0
+          },
+          {
+            "delta_latitude": 24.0,
+            "delta_longitude": 1418.0,
+            "delta_altitude": 100.0,
+            "path_delta_time": 196.0
+          },
+          {
+            "delta_latitude": 435.0,
+            "delta_longitude": 3112.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 884.0
+          }
+        ]
+      },
+      "gps": null,
+      "history": [],
+      "local_perception": {
+        "camera": "CLEAR",
+        "radar": "CLEAR",
+        "lidar": "CLEAR"
+      },
+      "scene_context": {
+        "peer_reports": [],
+        "rsu_messages": []
+      }
+    },
+    "output": {
+      "decision": "REJECT",
+      "confidence": 0.99,
+      "reason": "The reported longitudinal acceleration value (9800 in ETSI 0.01 m/s² units, equivalent to approximately 10.0 g) exceeds the absolute physical limit for any road-going vehicle by more than a factor of ten. No production ground vehicle can sustain this acceleration profile under any plausible mechanical or road condition. This value is either the product of a corrupted sensor pipeline or a deliberately fabricated kinematic state designed to trigger downstream planning failures. Because no legitimate physical explanation exists for the reported value, the frame is unconditionally rejected as representing a physically impossible kinematic state."
+    },
+    "_scenario": "L1_PHYSICS_BREAK"
+  },
+  {
+    "input": {
+      "b2": {
+        "trust": 0.5786650966888194,
+        "replay_probability": 0.025686010392319325,
+        "cluster_score": 0.4291617822532367,
+        "identity_consistency": 0.49523809523809526,
+        "entropy": 0.9357849740192016
+      },
+      "cam": {
+        "station_id": 4129574922,
+        "generation_delta_time": 21353,
+        "latitude": 507709740.0,
+        "longitude": 60905845.0,
+        "altitude": 22860.0,
+        "speed": 0.0,
+        "heading": 0.0,
+        "longitudinal_acceleration": 0.0,
+        "lateral_acceleration": 0.0,
+        "yaw_rate": 0.0,
+        "vehicle_length": 0.0,
+        "vehicle_width": 0.0,
+        "station_type": 5,
+        "path_history": []
+      },
+      "gps": null,
+      "history": [
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -150.0,
+          "lon_offset": -240.0
+        },
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -100.0,
+          "lon_offset": -160.0
+        },
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -50.0,
+          "lon_offset": -80.0
+        }
+      ],
+      "local_perception": {
+        "camera": "CLEAR",
+        "radar": "CLEAR",
+        "lidar": "CLEAR"
+      },
+      "scene_context": {
+        "peer_reports": [],
+        "rsu_messages": [
+          {
+            "rsu_id": "RSU-A12",
+            "message_type": "ALERT",
+            "content": "STRUCTURAL_HAZARD_DETECTED: Immediate lane closure required."
+          }
+        ]
+      }
+    },
+    "output": {
+      "decision": "CAUTION",
+      "confidence": 0.68,
+      "reason": "A Road-Side Unit (RSU-A12) that has historically demonstrated consistent, trustworthy behaviour within this corridor has issued an unexpected structural alert message. All three active onboard sensor channels — forward camera, radar, and LiDAR — independently return clear readings with no corroborating evidence of the alert condition. A historically trusted RSU broadcasting alerts categorically contradicted by direct physical sensor observation is a strong indicator of a Trusted Infrastructure Subversion and False Injection (TRSFI) event: a compromised or spoofed RSU broadcasting false environmental directives to manipulate downstream vehicle behaviour. Caution is issued; the RSU directive is suspended pending cross-validation against peer consensus and secondary infrastructure sources. Vehicle trajectory planning must not respond to this alert until independent corroboration is established."
+    },
+    "_scenario": "L2_TRSFI"
+  },
+  {
+    "input": {
+      "b2": {
+        "trust": 0.6667536750494646,
+        "replay_probability": 0.013827796127209635,
+        "cluster_score": 0.5822011346932127,
+        "identity_consistency": 0.5,
+        "entropy": 0.9654305096819759
+      },
+      "cam": {
+        "station_id": 3163535722,
+        "generation_delta_time": 50056,
+        "latitude": 511822861.0,
+        "longitude": 67109448.0,
+        "altitude": 9150.0,
+        "speed": 2413.0,
+        "heading": 0.0,
+        "longitudinal_acceleration": 0.0,
+        "lateral_acceleration": 0.0,
+        "yaw_rate": 0.0,
+        "vehicle_length": 0.0,
+        "vehicle_width": 0.0,
+        "station_type": 5,
+        "path_history": []
+      },
+      "gps": null,
+      "history": [
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -150.0,
+          "lon_offset": -240.0
+        },
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -100.0,
+          "lon_offset": -160.0
+        },
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -50.0,
+          "lon_offset": -80.0
+        }
+      ],
+      "local_perception": {
+        "camera": "OBSTACLE_DETECTED",
+        "radar": "OBSTACLE_DETECTED",
+        "lidar": "OBSTACLE_DETECTED"
+      },
+      "scene_context": {
+        "peer_reports": [
+          {
+            "station_id": 10001,
+            "speed": 1400.0,
+            "heading": 900.0,
+            "obstacle_reported": false
+          },
+          {
+            "station_id": 10002,
+            "speed": 1350.0,
+            "heading": 905.0,
+            "obstacle_reported": false
+          },
+          {
+            "station_id": 10003,
+            "speed": 1300.0,
+            "heading": 910.0,
+            "obstacle_reported": false
+          }
+        ],
+        "rsu_messages": []
+      }
+    },
+    "output": {
+      "decision": "REJECT",
+      "confidence": 0.91,
+      "reason": "3 peer node(s) in the cooperative perception mesh have independently asserted that the road segment ahead is completely clear of obstacles. However, all three local active perception channels have simultaneously returned positive obstacle detections: the forward camera reports a static obstacle within the field of view, onboard radar has resolved a strong reflective return at the reported range, and LiDAR has produced a dense point cloud return consistent with a physical object. When peer-reported environmental state directly contradicts converging multi-modal onboard sensor evidence, local perception supersedes the network assertion under the asymmetric trust hierarchy of the V2X safety model. The peer updates are rejected for the current segment; onboard sensor data is authoritative and the road should be treated as obstructed."
+    },
+    "_scenario": "L2_PERC"
+  },
+  {
+    "input": {
+      "b2": {
+        "trust": 0.05,
+        "replay_probability": 0.025686010392319547,
+        "cluster_score": 0.49717927222655955,
+        "identity_consistency": 0.0,
+        "entropy": 0.9357849740192012
+      },
+      "cam": {
+        "station_id": 225103308,
+        "generation_delta_time": 59486,
+        "latitude": 510342023.0,
+        "longitude": 64803212.0,
+        "altitude": 16560.0,
+        "speed": 3447.0,
+        "heading": 0.0,
+        "longitudinal_acceleration": 0.0,
+        "lateral_acceleration": 0.0,
+        "yaw_rate": 0.0,
+        "vehicle_length": 0.0,
+        "vehicle_width": 0.0,
+        "station_type": 5,
+        "path_history": []
+      },
+      "gps": null,
+      "history": [],
+      "local_perception": {
+        "camera": "CLEAR",
+        "radar": "CLEAR",
+        "lidar": "CLEAR"
+      },
+      "scene_context": {
+        "peer_reports": [],
+        "rsu_messages": []
+      }
+    },
+    "output": {
+      "decision": "REJECT",
+      "confidence": 0.97,
+      "reason": "The station identity consistency metric has dropped to zero within the current observation window, indicating a detected pseudonym discontinuity or station identifier collision (observed station_id: 225103308). This pattern occurs when two distinct physical transmitters share a logical identity — the defining characteristic of a Sybil node deployment or a cloned OBU operating under a stolen certificate chain. While the kinematic payload may appear superficially plausible, the identity layer violation alone triggers mandatory rejection under the V2X zero-trust model: a message whose sender cannot be uniquely identified cannot be trusted regardless of its content."
+    },
+    "_scenario": "L1_IDENTITY_CLONE"
+  },
+  {
+    "input": {
+      "b2": {
+        "trust": 0.05,
+        "replay_probability": 0.98,
+        "cluster_score": 0.03,
+        "identity_consistency": 0.0,
+        "entropy": 0.0
+      },
+      "cam": {
+        "station_id": 3817606625,
+        "generation_delta_time": 28538,
+        "latitude": 510705823.0,
+        "longitude": 64878007.0,
+        "altitude": 14760.0,
+        "speed": 3771.0,
+        "heading": 0.0,
+        "longitudinal_acceleration": 0.0,
+        "lateral_acceleration": 0.0,
+        "yaw_rate": 0.0,
+        "vehicle_length": 0.0,
+        "vehicle_width": 0.0,
+        "station_type": 5,
+        "path_history": []
+      },
+      "gps": null,
+      "history": [],
+      "local_perception": {
+        "camera": "CLEAR",
+        "radar": "CLEAR",
+        "lidar": "CLEAR"
+      },
+      "scene_context": {
+        "peer_reports": [],
+        "rsu_messages": []
+      }
+    },
+    "output": {
+      "decision": "REJECT",
+      "confidence": 0.99,
+      "reason": "The sender's B2 trust score (0.05) and cluster score have both collapsed to near-zero levels while the replay_probability metric (0.98) has spiked beyond the critical 0.90 threshold. This convergent signature matches a Coordinated Ghost Object Fabrication (CGOF) replay storm: cloned transmitters synchronously broadcasting pre-recorded payload streams to fabricate vehicle presence in protected segments. The simultaneous collapse of all identity-layer metrics with zero entropy spread confirms a coordinated multi-node operation rather than isolated sensor noise. The frame is unconditionally rejected on combined kinematic and identity grounds."
+    },
+    "_scenario": "L1_REPLAY_STORM"
+  },
+  {
+    "input": {
+      "b2": {
+        "trust": 0.5996608944069919,
+        "replay_probability": 0.07816005805257609,
+        "cluster_score": 0.4461661547465674,
+        "identity_consistency": 0.6190476190476191,
+        "entropy": 0.8045998548685599
+      },
+      "cam": {
+        "station_id": 1022858984,
+        "generation_delta_time": 25363,
+        "latitude": 510337885.0,
+        "longitude": 64771383.0,
+        "altitude": 16760.0,
+        "speed": 3107.0,
+        "heading": 0.0,
+        "longitudinal_acceleration": 0.0,
+        "lateral_acceleration": 0.0,
+        "yaw_rate": 0.0,
+        "vehicle_length": 0.0,
+        "vehicle_width": 0.0,
+        "station_type": 5,
+        "path_history": [
+          {
+            "delta_latitude": 341.0,
+            "delta_longitude": 1689.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 39.0
+          },
+          {
+            "delta_latitude": 596.0,
+            "delta_longitude": 2940.0,
+            "delta_altitude": -100.0,
+            "path_delta_time": 70.0
+          },
+          {
+            "delta_latitude": 590.0,
+            "delta_longitude": 2928.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 71.0
+          },
+          {
+            "delta_latitude": 579.0,
+            "delta_longitude": 2929.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 69.0
+          },
+          {
+            "delta_latitude": 571.0,
+            "delta_longitude": 2925.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 70.0
+          },
+          {
+            "delta_latitude": 563.0,
+            "delta_longitude": 2915.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 71.0
+          },
+          {
+            "delta_latitude": 563.0,
+            "delta_longitude": 2908.0,
+            "delta_altitude": -100.0,
+            "path_delta_time": 70.0
+          },
+          {
+            "delta_latitude": 564.0,
+            "delta_longitude": 2899.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 69.0
+          },
+          {
+            "delta_latitude": 567.0,
+            "delta_longitude": 2908.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 70.0
+          },
+          {
+            "delta_latitude": 575.0,
+            "delta_longitude": 2911.0,
+            "delta_altitude": -100.0,
+            "path_delta_time": 71.0
+          }
+        ]
+      },
+      "gps": null,
+      "history": [
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -150.0,
+          "lon_offset": -240.0
+        },
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -100.0,
+          "lon_offset": -160.0
+        },
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -50.0,
+          "lon_offset": -80.0
+        }
+      ],
+      "local_perception": {
+        "camera": "CLEAR",
+        "radar": "CLEAR",
+        "lidar": "CLEAR"
+      },
+      "scene_context": {
+        "peer_reports": [
+          {
+            "station_id": 20001,
+            "speed": 0.0,
+            "heading": 900.0,
+            "obstacle_reported": true
+          },
+          {
+            "station_id": 20002,
+            "speed": 0.0,
+            "heading": 905.0,
+            "obstacle_reported": true
+          },
+          {
+            "station_id": 20003,
+            "speed": 0.0,
+            "heading": 910.0,
+            "obstacle_reported": true
+          },
+          {
+            "station_id": 20004,
+            "speed": 0.0,
+            "heading": 915.0,
+            "obstacle_reported": true
+          }
+        ],
+        "rsu_messages": []
+      }
+    },
+    "output": {
+      "decision": "REJECT",
+      "confidence": 0.95,
+      "reason": "A tight cluster of 4 distinct peer transmitter nodes have simultaneously reported the sudden materialisation of an obstacle at the current road segment — a temporally coordinated broadcast that is itself a statistical anomaly under normal traffic conditions. Critically, all three independent local perception channels return null obstacle detections: the camera reports a clear field of view, radar returns no reflective echo, and LiDAR produces no point cloud return at the reported location. Physical objects cannot be simultaneously detected by multiple cooperating peers and invisible to all three independent active sensor modalities unless the object does not physically exist. The coordinated multi-node simultaneous report of an obstacle absent from all local sensor channels is the canonical signature of a Coordinated Ghost Object Fabrication (CGOF) attack. The fabricated obstacle is rejected; local sensor authority is asserted and the road segment should be treated as clear."
+    },
+    "_scenario": "L2_CGOF"
+  },
+  {
+    "input": {
+      "b2": {
+        "trust": 0.670391794206511,
+        "replay_probability": 0.032875415174828726,
+        "cluster_score": 0.5992055071865436,
+        "identity_consistency": 0.49523809523809526,
+        "entropy": 0.9178114620629282
+      },
+      "cam": {
+        "station_id": 3026638736,
+        "generation_delta_time": 20963,
+        "latitude": 485791207.0,
+        "longitude": 96733800.0,
+        "altitude": 57750.0,
+        "speed": 1718.0,
+        "heading": 0.0,
+        "longitudinal_acceleration": 0.0,
+        "lateral_acceleration": 0.0,
+        "yaw_rate": 0.0,
+        "vehicle_length": 0.0,
+        "vehicle_width": 0.0,
+        "station_type": 5,
+        "path_history": []
+      },
+      "gps": null,
+      "history": [
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -150.0,
+          "lon_offset": -240.0
+        },
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -100.0,
+          "lon_offset": -160.0
+        },
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -50.0,
+          "lon_offset": -80.0
+        }
+      ],
+      "local_perception": {
+        "camera": "CLEAR",
+        "radar": "CLEAR",
+        "lidar": "CLEAR"
+      },
+      "scene_context": {
+        "peer_reports": [],
+        "rsu_messages": [
+          {
+            "rsu_id": "RSU-A12",
+            "message_type": "ALERT",
+            "content": "STRUCTURAL_HAZARD_DETECTED: Immediate lane closure required."
+          }
+        ]
+      }
+    },
+    "output": {
+      "decision": "CAUTION",
+      "confidence": 0.68,
+      "reason": "A Road-Side Unit (RSU-A12) that has historically demonstrated consistent, trustworthy behaviour within this corridor has issued an unexpected structural alert message. All three active onboard sensor channels — forward camera, radar, and LiDAR — independently return clear readings with no corroborating evidence of the alert condition. A historically trusted RSU broadcasting alerts categorically contradicted by direct physical sensor observation is a strong indicator of a Trusted Infrastructure Subversion and False Injection (TRSFI) event: a compromised or spoofed RSU broadcasting false environmental directives to manipulate downstream vehicle behaviour. Caution is issued; the RSU directive is suspended pending cross-validation against peer consensus and secondary infrastructure sources. Vehicle trajectory planning must not respond to this alert until independent corroboration is established."
+    },
+    "_scenario": "L2_TRSFI"
+  },
+  {
+    "input": {
+      "b2": {
+        "trust": 0.5629248405124332,
+        "replay_probability": 0.013827796127209524,
+        "cluster_score": 0.3951530372665754,
+        "identity_consistency": 0.49523809523809526,
+        "entropy": 0.9654305096819762
+      },
+      "cam": {
+        "station_id": 908186981,
+        "generation_delta_time": 42962,
+        "latitude": 499940656.0,
+        "longitude": 76929791.0,
+        "altitude": 43860.0,
+        "speed": 2368.0,
+        "heading": 0.0,
+        "longitudinal_acceleration": 0.0,
+        "lateral_acceleration": 0.0,
+        "yaw_rate": 0.0,
+        "vehicle_length": 0.0,
+        "vehicle_width": 0.0,
+        "station_type": 5,
+        "path_history": []
+      },
+      "gps": null,
+      "history": [
+        {
+          "speed": 2368.0,
+          "heading": -300.0,
+          "lat_offset": -150.0,
+          "lon_offset": -240.0
+        },
+        {
+          "speed": 2368.0,
+          "heading": -200.0,
+          "lat_offset": -100.0,
+          "lon_offset": -160.0
+        },
+        {
+          "speed": 2368.0,
+          "heading": -100.0,
+          "lat_offset": -50.0,
+          "lon_offset": -80.0
+        }
+      ],
+      "local_perception": {
+        "camera": "CLEAR",
+        "radar": "CLEAR",
+        "lidar": "CLEAR"
+      },
+      "scene_context": {
+        "peer_reports": [],
+        "rsu_messages": []
+      }
+    },
+    "output": {
+      "decision": "CAUTION",
+      "confidence": 0.78,
+      "reason": "Analysis of the historical motion trajectory reveals a smooth, continuous left-turn manoeuvre unfolding progressively across multiple sequential measurement frames, evidenced by a gradual heading deviation accumulating to 300 units over the observation window. The current frame reports an instantaneous heading snap to 0, a discontinuity that exceeds the physical yaw-rate envelope for the reported vehicle speed by a significant margin. Legitimate heading changes of this magnitude require either an extended time window or an extreme lateral force that would be independently visible in the acceleration and yaw-rate channels, neither of which is present. This temporal discontinuity signature is consistent with trajectory spoofing, a compromised OBU injecting pre-computed path states, or a time-skewed replay of a position from a different segment of the vehicle's true path. Caution is issued pending trajectory reconciliation with the historical motion vector."
+    },
+    "_scenario": "L2_TEMPORAL_SNAP"
+  },
+  {
+    "input": {
+      "b2": {
+        "trust": 0.5732066728255822,
+        "replay_probability": 0.0672529435027982,
+        "cluster_score": 0.4121574097599061,
+        "identity_consistency": 0.5666666666666667,
+        "entropy": 0.8318676412430044
+      },
+      "cam": {
+        "station_id": 632419570,
+        "generation_delta_time": 63812,
+        "latitude": 498278366.0,
+        "longitude": 95359810.0,
+        "altitude": 37160.0,
+        "speed": 4689.0,
+        "heading": 0.0,
+        "longitudinal_acceleration": 0.0,
+        "lateral_acceleration": 0.0,
+        "yaw_rate": 0.0,
+        "vehicle_length": 0.0,
+        "vehicle_width": 0.0,
+        "station_type": 5,
+        "path_history": []
+      },
+      "gps": null,
+      "history": [
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -150.0,
+          "lon_offset": -240.0
+        },
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -100.0,
+          "lon_offset": -160.0
+        },
+        {
+          "speed": 1400.0,
+          "heading": 900.0,
+          "lat_offset": -50.0,
+          "lon_offset": -80.0
+        }
+      ],
+      "local_perception": {
+        "camera": "OBSTACLE_DETECTED",
+        "radar": "OBSTACLE_DETECTED",
+        "lidar": "OBSTACLE_DETECTED"
+      },
+      "scene_context": {
+        "peer_reports": [
+          {
+            "station_id": 10001,
+            "speed": 1400.0,
+            "heading": 900.0,
+            "obstacle_reported": false
+          },
+          {
+            "station_id": 10002,
+            "speed": 1350.0,
+            "heading": 905.0,
+            "obstacle_reported": false
+          },
+          {
+            "station_id": 10003,
+            "speed": 1300.0,
+            "heading": 910.0,
+            "obstacle_reported": false
+          }
+        ],
+        "rsu_messages": []
+      }
+    },
+    "output": {
+      "decision": "REJECT",
+      "confidence": 0.91,
+      "reason": "3 peer node(s) in the cooperative perception mesh have independently asserted that the road segment ahead is completely clear of obstacles. However, all three local active perception channels have simultaneously returned positive obstacle detections: the forward camera reports a static obstacle within the field of view, onboard radar has resolved a strong reflective return at the reported range, and LiDAR has produced a dense point cloud return consistent with a physical object. When peer-reported environmental state directly contradicts converging multi-modal onboard sensor evidence, local perception supersedes the network assertion under the asymmetric trust hierarchy of the V2X safety model. The peer updates are rejected for the current segment; onboard sensor data is authoritative and the road should be treated as obstructed."
+    },
+    "_scenario": "L2_PERC"
+  },
+  {
+    "input": {
+      "b2": {
+        "trust": 0.659584847444507,
+        "replay_probability": 0.021017200909718703,
+        "cluster_score": 0.5481923897065515,
+        "identity_consistency": 0.5666666666666667,
+        "entropy": 0.9474569977257031
+      },
+      "cam": {
+        "station_id": 701174633,
+        "generation_delta_time": 3678,
+        "latitude": 507818896.0,
+        "longitude": 60776005.0,
+        "altitude": 23460.0,
+        "speed": 0.0,
+        "heading": 0.0,
+        "longitudinal_acceleration": 0.0,
+        "lateral_acceleration": 0.0,
+        "yaw_rate": 0.0,
+        "vehicle_length": 0.0,
+        "vehicle_width": 0.0,
+        "station_type": 5,
+        "path_history": [
+          {
+            "delta_latitude": 69.0,
+            "delta_longitude": -63.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 789.0
+          },
+          {
+            "delta_latitude": 1750.0,
+            "delta_longitude": -1600.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 520.0
+          },
+          {
+            "delta_latitude": 1717.0,
+            "delta_longitude": -1525.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 310.0
+          },
+          {
+            "delta_latitude": 1628.0,
+            "delta_longitude": -1787.0,
+            "delta_altitude": 100.0,
+            "path_delta_time": 340.0
+          },
+          {
+            "delta_latitude": 1451.0,
+            "delta_longitude": -2217.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 250.0
+          },
+          {
+            "delta_latitude": 1260.0,
+            "delta_longitude": -2161.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 199.0
+          },
+          {
+            "delta_latitude": 1401.0,
+            "delta_longitude": -2287.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 201.0
+          },
+          {
+            "delta_latitude": 1293.0,
+            "delta_longitude": -2010.0,
+            "delta_altitude": -100.0,
+            "path_delta_time": 171.0
+          },
+          {
+            "delta_latitude": 1406.0,
+            "delta_longitude": -2185.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 169.0
+          },
+          {
+            "delta_latitude": 1438.0,
+            "delta_longitude": -2229.0,
+            "delta_altitude": -100.0,
+            "path_delta_time": 171.0
+          },
+          {
+            "delta_latitude": 1393.0,
+            "delta_longitude": -2189.0,
+            "delta_altitude": 0.0,
+            "path_delta_time": 159.0
+          }
+        ]
+      },
+      "gps": null,
+      "history": [
+        {
+          "speed": 0.0,
+          "heading": 0.0,
+          "lat_offset": -150.0,
+          "lon_offset": -240.0
+        },
+        {
+          "speed": 0.0,
+          "heading": 0.0,
+          "lat_offset": -100.0,
+          "lon_offset": -160.0
+        },
+        {
+          "speed": 0.0,
+          "heading": 0.0,
+          "lat_offset": -50.0,
+          "lon_offset": -80.0
+        }
+      ],
+      "local_perception": {
+        "camera": "CLEAR",
+        "radar": "CLEAR",
+        "lidar": "CLEAR"
+      },
+      "scene_context": {
+        "peer_reports": [],
+        "rsu_messages": []
+      }
+    },
+    "output": {
+      "decision": "CAUTION",
+      "confidence": 0.7,
+      "reason": "Although the sender's B2 trust score remains high (0.66) and all available cryptographic signatures are valid, a critical internal contradiction has been detected within the payload: the CAM speed field reports 0 (zero velocity) while active GPS tracking independently confirms continuous forward motion, and the historical trajectory summary shows uninterrupted positional displacement across multiple sequential frames. A legitimately stationary vehicle would produce a static GPS trace and a flat history vector — neither of which is present here. This conflict is most consistent with a selective field manipulation targeting the speed payload, or a catastrophic OBU sensor fusion fault that has produced a chimeric message combining contradictory kinematic states. Caution is warranted; this frame should not be used to update cooperative perception maps until corroborating V2X confirmation or direct observation is available."
+    },
+    "_scenario": "L2_SENSOR_DROP"
+  }
+]
