@@ -382,3 +382,119 @@ b2_csia:
   weight_timing:    0.25   # transmission inter-arrival entropy
 
 
+# ---------------------------------------------------------------------------
+# B1 V2 – Stateful hardening extensions
+#
+# These keys are optional for backward compatibility. When absent, the
+# stateful extensions use the defaults shown below.
+# ---------------------------------------------------------------------------
+
+# Replay cache: entries expire after this many seconds.
+b1_replay_cache_ttl_s: 30
+
+# Timestamp freshness: messages whose generation_delta_time is more than
+# this many milliseconds old (relative to system wall clock) are rejected.
+b1_timestamp_freshness_ms: 5000
+
+# Certificate rotation: if a vehicle changes its certificate identifier
+# more than b1_cert_max_rotations times within b1_cert_rotation_window_s
+# seconds, the message is flagged as a certificate-rotation anomaly.
+b1_cert_rotation_window_s: 60
+b1_cert_max_rotations: 3
+
+# Physical plausibility thresholds (ETSI native units).
+# speed: 0.01 m/s,  acceleration: 0.01 m/s²,  heading: 0.1°
+# yaw_rate: 0.01 °/s,  coordinates: 1e-7 degrees
+b1_plausibility:
+  max_speed_etsi:               8330       # 83.3 m/s = 300 km/h
+  max_acceleration_etsi:        1500       # 15 m/s²
+  max_jerk_etsi:                3000       # 30 m/s³ (per frame delta)
+  max_heading_change_etsi:      900        # 90 degrees per second (0.1 deg units)
+  max_yaw_rate_etsi:            7500       # 75 deg/s (0.01 deg/s units)
+  lat_min:                      -900000000
+  lat_max:                       900000000
+  lon_min:                      -1800000000
+  lon_max:                       1800000000
+
+# ---------------------------------------------------------------------------
+# B2 V2 – Trust evolution and vehicle-type kinematic profiles
+#
+# These keys are optional. When absent the V2 extensions fall back to the
+# built-in defaults defined in b2_csia/models.py.
+# ---------------------------------------------------------------------------
+
+# Exponential trust decay rate per suspicious observation.  Range (0, 1).
+b2_trust_decay_alpha: 0.10
+
+# Gradual trust recovery rate per benign observation.  Range (0, 1).
+b2_trust_recovery_beta: 0.05
+
+# Maximum number of trust observations retained per vehicle in memory.
+b2_trust_history_window: 20
+
+# Per-vehicle kinematic profiles.  Override the built-in model defaults.
+# station_type integers match the ETSI station_types enum defined above.
+b2_vehicle_profiles:
+
+  passenger_car:
+    station_type:           5
+    max_acceleration:       8.0
+    max_deceleration:       12.0
+    max_yaw_rate:           45.0
+    expected_update_hz:     10.0
+    heading_tolerance:      5.0
+    max_speed:              55.6
+
+  bus:
+    station_type:           6
+    max_acceleration:       3.5
+    max_deceleration:       8.0
+    max_yaw_rate:           25.0
+    expected_update_hz:     5.0
+    heading_tolerance:      3.0
+    max_speed:              33.3
+
+  heavy_truck:
+    station_type:           8
+    max_acceleration:       3.0
+    max_deceleration:       7.0
+    max_yaw_rate:           20.0
+    expected_update_hz:     5.0
+    heading_tolerance:      3.0
+    max_speed:              36.1
+
+  light_truck:
+    station_type:           7
+    max_acceleration:       5.0
+    max_deceleration:       9.0
+    max_yaw_rate:           30.0
+    expected_update_hz:     5.0
+    heading_tolerance:      4.0
+    max_speed:              44.4
+
+  motorcycle:
+    station_type:           4
+    max_acceleration:       10.0
+    max_deceleration:       15.0
+    max_yaw_rate:           90.0
+    expected_update_hz:     10.0
+    heading_tolerance:      10.0
+    max_speed:              83.3
+
+  rsu:
+    station_type:           15
+    max_acceleration:       0.0
+    max_deceleration:       0.0
+    max_yaw_rate:           0.0
+    expected_update_hz:     1.0
+    heading_tolerance:      0.0
+    max_speed:              0.0
+
+  pedestrian:
+    station_type:           1
+    max_acceleration:       3.0
+    max_deceleration:       5.0
+    max_yaw_rate:           180.0
+    expected_update_hz:     2.0
+    heading_tolerance:      30.0
+    max_speed:              3.0
