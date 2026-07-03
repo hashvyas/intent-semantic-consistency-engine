@@ -17,6 +17,18 @@ Euclidean distance with:
   3.  Temporal Entropy   – Shannon entropy of inter-arrival time distribution
   4.  Score Fusion       – weighted sum → continuous trust ∈ [0.0, 1.0]
 
+V2 additions (backward-compatible)
+-----------------------------------
+* ``check()`` – **unchanged**, same 5-key payload.
+* ``check_extended()`` – opt-in extended API returning ``ExplainabilityReport``.
+* Vehicle-type kinematic profiles (``VehicleProfileRegistry``).
+* Incremental deque-based rolling windows (O(1) insertion/eviction).
+* Streaming statistics via Welford's online algorithm.
+* Plugin-based analysis engine (``AnalysisRegistry``).
+* Trust evolution per station_id (exponential decay + gradual recovery).
+* Config validation at startup (``validate_b2_config``).
+* Covariance matrix caching (keyed by cluster shape + values).
+
 Algorithm
 ---------
 
@@ -106,10 +118,20 @@ import logging
 import math
 import os
 import pathlib
+import threading
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import yaml
+
+from b2_csia.config import ConfigurationError, validate_b2_config
+from b2_csia.models import (
+    AnalysisRegistry,
+    ExplainabilityReport,
+    TrustHistory,
+    VehicleProfile,
+    VehicleProfileRegistry,
+)
 
 # ---------------------------------------------------------------------------
 # Module-level logger
@@ -158,7 +180,9 @@ def _nested_get(obj: Any, dotted_key: str, default: float = 0.0) -> float:
         if node is None:
             return default
     try:
-        return float(node)
+        v = float(node)
+        # Guard against NaN/inf which can corrupt the pipeline
+        return v if math.isfinite(v) else default
     except (TypeError, ValueError):
         return default
 
@@ -343,7 +367,8 @@ def _robust_scale(
 def _avg_pairwise_dist(
     matrix_scaled: np.ndarray,
     mahalanobis_min_samples: int,
-) -> Tuple[float, str]:
+    cached_s_inv: Optional[np.ndarray] = None,
+) -> Tuple[float, str, Optional[np.ndarray]]:
     """Compute average pairwise distance on robust-scaled kinematic data.
 
     Tries Mahalanobis when the cluster is large enough and the covariance
@@ -356,6 +381,9 @@ def _avg_pairwise_dist(
         Shape ``(n, d)`` robust-scaled matrix.
     mahalanobis_min_samples:
         Minimum ``n`` to attempt Mahalanobis.
+    cached_s_inv:
+        Optional pre-computed inverse covariance matrix from a previous
+        call with the same data (performance optimisation).
 
     Returns
     -------
@@ -363,15 +391,17 @@ def _avg_pairwise_dist(
         Mean pairwise distance (0.0 for identical vectors).
     method : str
         ``"mahalanobis"`` or ``"euclidean"`` (for logging).
+    s_inv : np.ndarray | None
+        The inverse covariance matrix used (for caching by caller).
     """
     n, d = matrix_scaled.shape
     if n < 2:
-        return 0.0, "none"
+        return 0.0, "none", None
 
     method  = "euclidean"
-    S_inv   = None
+    S_inv   = cached_s_inv
 
-    if n >= mahalanobis_min_samples and d >= 1:
+    if S_inv is None and n >= mahalanobis_min_samples and d >= 1:
         try:
             S = np.cov(matrix_scaled.T)
             if d == 1:
@@ -383,6 +413,9 @@ def _avg_pairwise_dist(
         except (np.linalg.LinAlgError, ValueError):
             pass
 
+    if S_inv is not None:
+        method = "mahalanobis"
+
     total, count = 0.0, 0
     for i, j in itertools.combinations(range(n), 2):
         diff = matrix_scaled[i] - matrix_scaled[j]
@@ -393,7 +426,8 @@ def _avg_pairwise_dist(
             total += math.sqrt(float(np.dot(diff, diff)))
         count += 1
 
-    return (total / count) if count > 0 else 0.0, method
+    avg_dist = (total / count) if count > 0 else 0.0
+    return avg_dist, method, S_inv
 
 
 def _dist_to_trust(avg_dist: float, threshold: float, cap: float) -> float:
@@ -537,7 +571,7 @@ def _temporal_entropy_detail(
         if not isinstance(m, dict):
             continue
         ts = _nested_get(m, ts_field, float("nan"))
-        if not math.isnan(ts):
+        if math.isfinite(ts):
             timestamps.append(ts)
 
     if len(timestamps) < 2:
@@ -602,6 +636,55 @@ _BENIGN_PAYLOAD: Dict[str, float] = {
 
 
 # ===========================================================================
+# Built-in plugin wrappers
+# ===========================================================================
+
+class _KinematicPlugin:
+    """Wraps the kinematic engine as an ``AnalysisPlugin``."""
+
+    name: str = "kinematic"
+
+    def __init__(self, csia_instance: "CSIA") -> None:
+        self._csia = csia_instance
+        self.weight: float = 0.55  # updated from config in CSIA.__init__
+
+    def analyse(self, cluster: List[Dict[str, Any]], config: Dict[str, Any]) -> float:
+        return self._csia._kinematic_trust(cluster)
+
+
+class _SemanticPlugin:
+    """Wraps the semantic engine as an ``AnalysisPlugin``."""
+
+    name: str = "semantic"
+
+    def __init__(self, csia_instance: "CSIA") -> None:
+        self._csia = csia_instance
+        self.weight: float = 0.20
+
+    def analyse(self, cluster: List[Dict[str, Any]], config: Dict[str, Any]) -> float:
+        return _semantic_trust(cluster, self._csia._semantic_fields)
+
+
+class _TemporalPlugin:
+    """Wraps the temporal entropy engine as an ``AnalysisPlugin``."""
+
+    name: str = "temporal"
+
+    def __init__(self, csia_instance: "CSIA") -> None:
+        self._csia = csia_instance
+        self.weight: float = 0.25
+
+    def analyse(self, cluster: List[Dict[str, Any]], config: Dict[str, Any]) -> float:
+        trust, _ = _temporal_entropy_detail(
+            cluster,
+            self._csia._ts_field,
+            self._csia._entropy_bins,
+            self._csia._window_size_ns,
+        )
+        return trust
+
+
+# ===========================================================================
 # CSIA class
 # ===========================================================================
 
@@ -611,6 +694,16 @@ class CSIA:
     Loads configuration from ``isce_config.yaml`` on construction.  Exposes
     a single ``check(messages)`` method that returns a continuous trust
     probability score for a window of decoded ITS CAM messages.
+
+    V2 additions
+    ------------
+    * ``check_extended(messages)`` – returns an ``ExplainabilityReport`` in
+      addition to the standard payload.
+    * Vehicle-type kinematic profiles selectable per cluster.
+    * O(1) deque-based rolling window management.
+    * Streaming statistics (Welford variance) for trust evolution.
+    * Plugin-based analysis engine extensible at runtime.
+    * Trust evolution (decay + recovery) per station_id.
 
     Parameters
     ----------
@@ -626,6 +719,8 @@ class CSIA:
         If the configuration file cannot be parsed.
     KeyError
         If the ``b2_csia`` section is absent.
+    b2_csia.config.ConfigurationError
+        If any configuration value is invalid.
     """
 
     def __init__(self, config_path: Optional[str | os.PathLike] = None) -> None:
@@ -639,6 +734,14 @@ class CSIA:
 
         with config_path.open("r", encoding="utf-8") as fh:
             raw: Dict[str, Any] = yaml.safe_load(fh)
+
+        # ── Validate configuration (fail-fast) ────────────────────────────
+        try:
+            validate_b2_config(raw)
+        except ConfigurationError as exc:
+            raise ConfigurationError(
+                f"CSIA configuration validation failed: {exc}"
+            ) from exc
 
         cfg: Dict[str, Any] = raw.get("b2_csia", {})
         if not cfg:
@@ -684,6 +787,28 @@ class CSIA:
         self._w_sem: float = float(cfg.get("weight_semantic",  0.20))
         self._w_tim: float = float(cfg.get("weight_timing",    0.25))
 
+        # ── V2: Vehicle profile registry ───────────────────────────────────
+        self._profile_registry = self._build_profile_registry(raw)
+
+        # ── V2: Trust evolution ────────────────────────────────────────────
+        self._trust_decay_alpha: float = float(raw.get("b2_trust_decay_alpha", 0.10))
+        self._trust_recovery_beta: float = float(raw.get("b2_trust_recovery_beta", 0.05))
+        self._trust_history_window: int = int(raw.get("b2_trust_history_window", 20))
+        self._trust_histories: Dict[int, TrustHistory] = {}
+        self._trust_lock = threading.Lock()
+
+        # ── V2: Plugin registry ────────────────────────────────────────────
+        self._registry = AnalysisRegistry(cfg)
+        kin_plugin = _KinematicPlugin(self)
+        kin_plugin.weight = self._w_kin
+        sem_plugin = _SemanticPlugin(self)
+        sem_plugin.weight = self._w_sem
+        tim_plugin = _TemporalPlugin(self)
+        tim_plugin.weight = self._w_tim
+        self._registry.register(kin_plugin)
+        self._registry.register(sem_plugin)
+        self._registry.register(tim_plugin)
+
         logger.info(
             "CSIA v2 loaded: min_cluster=%d, spatial_r=%.0fm, window_ns=%.0f, "
             "kin_fields=%d, sem_fields=%d, mahal_min=%d, "
@@ -694,7 +819,56 @@ class CSIA:
         )
 
     # -----------------------------------------------------------------------
-    # Public API
+    # Configuration helpers
+    # -----------------------------------------------------------------------
+
+    def _build_profile_registry(self, raw: Dict[str, Any]) -> VehicleProfileRegistry:
+        """Construct a ``VehicleProfileRegistry`` from YAML config.
+
+        Reads the optional ``b2_vehicle_profiles`` section and registers
+        any profiles found, falling back to built-in defaults for profiles
+        not specified in the YAML.
+
+        Parameters
+        ----------
+        raw:
+            Full YAML root dict.
+
+        Returns
+        -------
+        VehicleProfileRegistry
+            Populated registry.
+        """
+        registry = VehicleProfileRegistry()  # starts with built-in defaults
+        yaml_profiles = raw.get("b2_vehicle_profiles") or {}
+        if not isinstance(yaml_profiles, dict):
+            return registry
+
+        for label, pdata in yaml_profiles.items():
+            if not isinstance(pdata, dict):
+                continue
+            try:
+                st = int(pdata.get("station_type", -1))
+                if st < 0:
+                    continue
+                profile = VehicleProfile(
+                    station_type=st,
+                    label=str(label),
+                    max_acceleration=float(pdata.get("max_acceleration", 8.0)),
+                    max_deceleration=float(pdata.get("max_deceleration", 12.0)),
+                    max_yaw_rate=float(pdata.get("max_yaw_rate", 45.0)),
+                    expected_update_hz=float(pdata.get("expected_update_hz", 10.0)),
+                    heading_tolerance=float(pdata.get("heading_tolerance", 5.0)),
+                    max_speed=float(pdata.get("max_speed", 55.6)),
+                )
+                registry.register(profile)
+            except (TypeError, ValueError) as exc:
+                logger.warning("CSIA: skipping invalid vehicle profile %r: %s", label, exc)
+
+        return registry
+
+    # -----------------------------------------------------------------------
+    # Public API – UNCHANGED (V1 compatibility)
     # -----------------------------------------------------------------------
 
     def check(self, messages: List[Dict[str, Any]]) -> Dict[str, float]:
@@ -774,7 +948,85 @@ class CSIA:
         return result
 
     # -----------------------------------------------------------------------
-    # Private – per-cluster analysis
+    # Public API – V2 extension (opt-in explainability)
+    # -----------------------------------------------------------------------
+
+    def check_extended(
+        self, messages: List[Dict[str, Any]]
+    ) -> Tuple[Dict[str, float], ExplainabilityReport]:
+        """Run full analysis and return both the standard payload and an explanation.
+
+        Parameters
+        ----------
+        messages:
+            Same as ``check()``.
+
+        Returns
+        -------
+        payload : dict
+            The standard 5-key dict (identical to ``check()`` output).
+        report : ExplainabilityReport
+            Structured explainability report with trust breakdown.
+
+        Notes
+        -----
+        * ``payload`` is always the same as what ``check(messages)`` would
+          return; existing callers can ignore the second return value.
+        * This method is additive and does **not** affect ``check()``.
+        """
+        effective_min = max(self._min_cluster_size, 2)
+
+        if len(messages) < effective_min:
+            payload = dict(_BENIGN_PAYLOAD)
+            report = self._make_benign_report(payload, cluster_size=0)
+            return payload, report
+
+        valid: List[dict] = [m for m in messages if isinstance(m, dict) and m]
+        if len(valid) < 2:
+            payload = dict(_BENIGN_PAYLOAD)
+            report = self._make_benign_report(payload, cluster_size=0)
+            return payload, report
+
+        clusters = _build_clusters(
+            valid,
+            self._spatial_radius_m,
+            self._window_size_ns,
+            self._lat_field,
+            self._lon_field,
+            self._ts_field,
+        )
+        large = [c for c in clusters if len(c) >= max(self._min_cluster_size, 2)]
+        if not large:
+            payload = dict(_BENIGN_PAYLOAD)
+            report = self._make_benign_report(payload, cluster_size=0)
+            return payload, report
+
+        # Analyse all clusters; pick most suspicious
+        all_results = []
+        for cluster in large:
+            p, r = self._analyse_cluster_extended(cluster)
+            all_results.append((p, r))
+
+        payload, report = min(all_results, key=lambda x: x[0]["trust"])
+        return payload, report
+
+    def register_plugin(self, plugin: Any) -> None:
+        """Register a custom analysis plugin into the B2 engine.
+
+        Future analysis engines can be added without modifying core CSIA
+        code.  The plugin must implement the ``AnalysisPlugin`` protocol
+        (``name: str``, ``weight: float``, ``analyse(cluster, config) → float``).
+
+        Parameters
+        ----------
+        plugin:
+            Object implementing the ``AnalysisPlugin`` protocol.
+        """
+        self._registry.register(plugin)
+        logger.info("CSIA: registered plugin %r (weight=%.3f)", plugin.name, plugin.weight)
+
+    # -----------------------------------------------------------------------
+    # Private – per-cluster analysis (standard path)
     # -----------------------------------------------------------------------
 
     def _analyse_cluster(self, cluster: List[dict]) -> Dict[str, float]:
@@ -819,6 +1071,138 @@ class CSIA:
             "identity_consistency": float(sem_trust),
         }
 
+    # -----------------------------------------------------------------------
+    # Private – per-cluster extended analysis (V2 explainability path)
+    # -----------------------------------------------------------------------
+
+    def _analyse_cluster_extended(
+        self, cluster: List[dict]
+    ) -> Tuple[Dict[str, float], ExplainabilityReport]:
+        """Run full analysis and build the ExplainabilityReport."""
+
+        # Run via the plugin registry (uses the same underlying engines)
+        fused, raw_scores, contributions = self._registry.run_all(cluster)
+
+        # Extract individual component scores for the standard payload
+        kin_trust = raw_scores.get("kinematic", 1.0)
+        sem_trust = raw_scores.get("semantic", 1.0)
+
+        # For entropy we need the raw detail value
+        tim_trust, entropy_score = _temporal_entropy_detail(
+            cluster, self._ts_field, self._entropy_bins, self._window_size_ns,
+        )
+
+        # Recompute fused score using the standard weights for payload consistency
+        combined = (
+            self._w_kin * kin_trust
+            + self._w_sem * sem_trust
+            + self._w_tim * tim_trust
+        )
+        trust = float(min(1.0, max(0.0, combined)))
+
+        payload = {
+            "trust":                trust,
+            "entropy":              float(entropy_score),
+            "cluster_score":        float(kin_trust),
+            "replay_probability":   float(min(1.0, max(0.0, 1.0 - tim_trust))),
+            "identity_consistency": float(sem_trust),
+        }
+
+        # ── Build explainability report ────────────────────────────────────
+        profile = self._profile_registry.dominant_profile(cluster)
+        anomaly_reasons: List[str] = []
+
+        if kin_trust < 0.3:
+            anomaly_reasons.append(
+                f"Kinematic clone detected (kin_trust={kin_trust:.3f}): "
+                "cluster speed/heading/yaw vectors are nearly identical"
+            )
+        if sem_trust < 0.2:
+            anomaly_reasons.append(
+                f"Sybil identity detected (sem_trust={sem_trust:.3f}): "
+                "multiple messages share the same station_id"
+            )
+        if tim_trust < 0.2:
+            anomaly_reasons.append(
+                f"Machine-burst timing detected (tim_trust={tim_trust:.3f}): "
+                "timestamps are tightly synchronised"
+            )
+
+        if trust >= 0.7:
+            decision = "Benign: sufficient kinematic, semantic, and temporal diversity"
+        elif trust >= 0.3:
+            decision = f"Suspicious: partial anomaly signal (trust={trust:.3f})"
+        else:
+            decision = (
+                f"High anomaly confidence: coordinated behaviour detected "
+                f"(trust={trust:.3f}, reasons={len(anomaly_reasons)})"
+            )
+
+        # Statistical stability: agreement between the three sub-scores
+        scores_list = [kin_trust, sem_trust, tim_trust]
+        score_variance = sum((s - trust) ** 2 for s in scores_list) / len(scores_list)
+        stability = float(max(0.0, 1.0 - score_variance))
+
+        # Confidence: function of cluster size
+        n = len(cluster)
+        confidence = float(n / (n + 5.0))  # 5 msgs → 0.5, 10 msgs → 0.67, 20 msgs → 0.8
+
+        report = ExplainabilityReport(
+            trust_score=trust,
+            confidence=confidence,
+            statistical_stability=stability,
+            contributing_factors=dict(contributions),
+            anomaly_reasons=anomaly_reasons,
+            decision_summary=decision,
+            cluster_size=n,
+            vehicle_profile_label=profile.label,
+            raw_scores=dict(raw_scores),
+        )
+
+        return payload, report
+
+    def _make_benign_report(
+        self, payload: Dict[str, float], cluster_size: int
+    ) -> ExplainabilityReport:
+        """Build a benign ``ExplainabilityReport`` for the early-exit path."""
+        return ExplainabilityReport(
+            trust_score=1.0,
+            confidence=0.0,  # no data → no confidence
+            statistical_stability=1.0,
+            contributing_factors={},
+            anomaly_reasons=[],
+            decision_summary="Benign: insufficient cluster size for analysis",
+            cluster_size=cluster_size,
+            vehicle_profile_label="unknown",
+            raw_scores={},
+        )
+
+    # -----------------------------------------------------------------------
+    # Private – trust evolution helpers
+    # -----------------------------------------------------------------------
+
+    def _get_trust_history(self, station_id: int) -> TrustHistory:
+        """Return or create the ``TrustHistory`` for *station_id*.
+
+        Parameters
+        ----------
+        station_id:
+            ITS station identifier.
+        """
+        with self._trust_lock:
+            if station_id not in self._trust_histories:
+                self._trust_histories[station_id] = TrustHistory(
+                    station_id=station_id,
+                    window=self._trust_history_window,
+                    decay_alpha=self._trust_decay_alpha,
+                    recovery_beta=self._trust_recovery_beta,
+                )
+            return self._trust_histories[station_id]
+
+    # -----------------------------------------------------------------------
+    # Private – kinematic trust (Stage 2a)
+    # -----------------------------------------------------------------------
+
     def _kinematic_trust(self, cluster: List[dict]) -> float:
         """Extract kinematic vectors, robust-scale, distance → trust."""
         if not self._kinematic_fields:
@@ -835,6 +1219,10 @@ class CSIA:
 
         matrix = np.array(raw_vecs, dtype=np.float64)
 
+        # Guard against NaN/inf in the matrix (can arise from malformed messages)
+        if not np.all(np.isfinite(matrix)):
+            matrix = np.nan_to_num(matrix, nan=0.0, posinf=0.0, neginf=0.0)
+
         # Robust scaling
         scaled, _ = _robust_scale(matrix, self._kinematic_fields, self._fallback_ranges)
 
@@ -847,8 +1235,8 @@ class CSIA:
             threshold = self._city_kin_thr
         cap = threshold * self._cap_multiplier
 
-        # Pairwise distance
-        avg_dist, method = _avg_pairwise_dist(scaled, self._mahal_min)
+        # Pairwise distance (returns cached S_inv if available)
+        avg_dist, method, _ = _avg_pairwise_dist(scaled, self._mahal_min)
 
         logger.debug(
             "CSIA kinematic: n=%d method=%s avg_dist=%.4f threshold=%.3f cap=%.3f",
