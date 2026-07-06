@@ -70,6 +70,9 @@ class ValidationFailureReason(Enum):
     #: Latitude or longitude fields are outside the ETSI-defined valid range.
     INVALID_COORDINATES = auto()
 
+    #: Heading field lies outside the ETSI-defined valid encoding range [0, 3600].
+    INVALID_HEADING = auto()
+
 
 # ---------------------------------------------------------------------------
 # CamMessage – parsed, validated representation of a raw CAM dict
@@ -468,10 +471,42 @@ def safe_parse_cam(raw: Any) -> Tuple[Optional[CamMessage], Optional[str]]:
     ), None
 
 
+@dataclass(frozen=True)
+class ValidationAssessment:
+    """Structured validation assessment returned by B1 in ISCE V2.
+
+    Replaces the binary ValidationResult with a confidence-aware schema.
+    """
+
+    fatal: bool
+    validation_score: float
+    confidence: float
+    reasons: List[str]
+    checks: Dict[str, bool]
+    details: Dict[str, Any] = field(default_factory=dict)
+    wall_time: float = field(default_factory=time.time)
+    confidence_breakdown: Dict[str, float] = field(default_factory=dict)
+    confidence_contributors: List[str] = field(default_factory=list)
+
+    @property
+    def valid(self) -> bool:
+        # For backward compatibility, valid=True means absolutely no anomalies occurred
+        return not self.fatal and len(self.reasons) == 0
+
+    @property
+    def score(self) -> float:
+        return 1.0 if self.valid else 0.0
+
+    @property
+    def reason(self) -> Optional[ValidationFailureReason]:
+        return self.details.get("reason")
+
+
 __all__ = [
     "ValidationFailureReason",
     "CamMessage",
     "ValidationResult",
+    "ValidationAssessment",
     "VehicleState",
     "safe_parse_cam",
 ]

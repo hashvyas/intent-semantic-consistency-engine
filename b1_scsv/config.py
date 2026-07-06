@@ -248,10 +248,32 @@ def validate_b1_config(raw: Dict[str, Any]) -> None:
         _optional_positive(plaus, "max_jerk_ms3", section, allow_zero=True)
         _optional_positive(plaus, "max_heading_change_deg_s", section, allow_zero=True)
         _optional_positive(plaus, "max_yaw_rate_deg_s", section, allow_zero=True)
-        _optional_range(plaus, "lat_min", -900_000_000, 0, section)
-        _optional_range(plaus, "lat_max", 0, 900_000_000, section)
         _optional_range(plaus, "lon_min", -1_800_000_000, 0, section)
         _optional_range(plaus, "lon_max", 0, 1_800_000_000, section)
+
+    # ── Validation section (optional root key) ─────────────────────────────
+    val = raw.get("validation")
+    if val is not None:
+        if not isinstance(val, dict):
+            raise ConfigurationError("'validation' must be a mapping in isce_config.yaml")
+        fatal = val.get("fatal")
+        if fatal is not None:
+            if not isinstance(fatal, dict):
+                raise ConfigurationError("validation.fatal must be a mapping")
+            for k, v in fatal.items():
+                if not isinstance(v, bool):
+                    raise ConfigurationError(f"validation.fatal.{k} must be boolean")
+        penalties = val.get("penalties")
+        if penalties is not None:
+            if not isinstance(penalties, dict):
+                raise ConfigurationError("validation.penalties must be a mapping")
+            for k, v in penalties.items():
+                if not isinstance(v, (int, float)) or not (0.0 <= float(v) <= 1.0):
+                    raise ConfigurationError(f"validation.penalties.{k} must be float in [0.0, 1.0]")
+        min_score = val.get("minimum_validation_score")
+        if min_score is not None:
+            if not isinstance(min_score, (int, float)) or not (0.0 <= float(min_score) <= 1.0):
+                raise ConfigurationError("validation.minimum_validation_score must be float in [0.0, 1.0]")
 
 
 __all__ = ["ConfigurationError", "validate_b1_config"]

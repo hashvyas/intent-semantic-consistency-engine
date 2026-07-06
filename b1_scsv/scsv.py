@@ -4,6 +4,24 @@ b1_scsv/scsv.py
 B1 – Sender Certificate Semantic Validation (SCSV)
 Part of the ISCE STB V2X Security Pipeline.
 
+Architectural Separation of Responsibilities
+---------------------------------------------
+* **SCSV (Validation Layer)**
+  - *Question*: Is this message technically valid enough to continue through the pipeline?
+  - *Focus*: Handles objective physical sanity checks on single messages (GPS coordinate ranges,
+    invalid heading encoding, negative timestamps, impossible absolute speed, and impossible
+    absolute acceleration) as well as protocol validity checks (certificate anomalies, replay, and freshness).
+  - *Examples*: Coordinates valid, Timestamp fresh, Certificate valid, Replay detected.
+* **Misbehavior Detection (MBD Layer)**
+  - *Question*: Is this sender behaving maliciously despite sending a technically valid message?
+  - *Focus*: Analyzes vehicle motion context and trajectory/speed anomalies relative to physics profiles,
+    abnormal motion, Sybil behavior, or spoofing. SCSV delegates these behavioral checks to MBD.
+  - *Examples*: Abnormal acceleration, Speed anomaly, Possible replay pattern.
+* **CSIA (Trust Reasoning Layer)**
+  - *Question*: Given the outputs of SCSV and MBD together with cooperative observations, how trustworthy is this sender?
+  - *Focus*: Reasons about cooperative observations and propagates trust over the vehicle observability graph.
+  - *Examples*: Neighbour corroboration, Belief, Disbelief, Uncertainty, Trust, Confidence.
+
 Purpose
 -------
 Validate that the *kind* of message being sent is semantically consistent
@@ -75,6 +93,7 @@ from b1_scsv.models import (
     CamMessage,
     ValidationFailureReason,
     ValidationResult,
+    ValidationAssessment,
     VehicleState,
     safe_parse_cam,
 )
@@ -271,14 +290,17 @@ class PhysicalPlausibilityValidator:
     ) -> Optional[str]:
         """Check *msg* for physical plausibility.
 
+        This method performs objective physical sanity validation on a message,
+        ignoring behavioral features (jerk, heading change, yaw rate, lateral acceleration)
+        which are delegated to the Misbehavior Detection (MBD) layer.
+
         Parameters
         ----------
         msg:
             The parsed CAM message to validate.
         prev_state:
-            Optional prior ``VehicleState`` for this station.  When
-            provided, jerk (rate of change of acceleration) is also
-            checked using the last recorded acceleration value.
+            Optional prior ``VehicleState`` for this station. Kept for backward compatibility
+            but ignored to avoid dependency on historical behavior in SCSV.
 
         Returns
         -------
@@ -300,51 +322,28 @@ class PhysicalPlausibilityValidator:
                     f"[{self.lon_min}, {self.lon_max}]"
                 )
 
+        # ── Heading encoding ──────────────────────────────────────────────
+        if msg.heading is not None:
+            if not (0.0 <= msg.heading <= 3600.0):
+                return (
+                    f"heading {msg.heading} out of valid range [0, 3600] "
+                    f"(ETSI 0.1° units)"
+                )
+
         # ── Speed ─────────────────────────────────────────────────────────
-        if msg.speed is not None and msg.speed > self.max_speed:
-            return (
-                f"speed {msg.speed} exceeds max plausible {self.max_speed} "
-                f"(ETSI 0.01 m/s units)"
-            )
-
-        # ── Acceleration ──────────────────────────────────────────────────
-        for label, val in (
-            ("longitudinal_acceleration", msg.longitudinal_acceleration),
-            ("lateral_acceleration", msg.lateral_acceleration),
-        ):
-            if val is not None and abs(val) > self.max_acceleration:
+        if msg.speed is not None:
+            if msg.speed < 0.0 or msg.speed > self.max_speed:
                 return (
-                    f"{label} |{val}| exceeds max plausible {self.max_acceleration} "
+                    f"speed {msg.speed} outside valid range [0, {self.max_speed}] "
+                    f"(ETSI 0.01 m/s units)"
+                )
+
+        # ── Longitudinal Acceleration ─────────────────────────────────────
+        if msg.longitudinal_acceleration is not None:
+            if abs(msg.longitudinal_acceleration) > self.max_acceleration:
+                return (
+                    f"longitudinal_acceleration |{msg.longitudinal_acceleration}| exceeds max plausible {self.max_acceleration} "
                     f"(ETSI 0.01 m/s² units)"
-                )
-
-        # ── Yaw rate ──────────────────────────────────────────────────────
-        if msg.yaw_rate is not None and abs(msg.yaw_rate) > self.max_yaw_rate:
-            return (
-                f"yaw_rate |{msg.yaw_rate}| exceeds max plausible {self.max_yaw_rate} "
-                f"(ETSI 0.01 °/s units)"
-            )
-
-        # ── Jerk (change in acceleration between frames) ──────────────────
-        if prev_state and msg.longitudinal_acceleration is not None and prev_state.accelerations:
-            prev_acc = prev_state.accelerations[-1]
-            jerk = abs(msg.longitudinal_acceleration - prev_acc)
-            if jerk > self.max_jerk:
-                return (
-                    f"jerk {jerk} exceeds max plausible {self.max_jerk} "
-                    f"(ETSI 0.01 m/s² delta per frame)"
-                )
-
-        # ── Heading change ────────────────────────────────────────────────
-        if prev_state and msg.heading is not None and prev_state.headings:
-            prev_h = prev_state.headings[-1]
-            delta = abs(msg.heading - prev_h)
-            # Heading wraps at 3600; use the smaller of the two arcs
-            delta = min(delta, 3600 - delta)
-            if delta > self.max_heading_change:
-                return (
-                    f"heading change {delta} (0.1° units) exceeds max "
-                    f"plausible {self.max_heading_change}"
                 )
 
         return None  # all checks passed
@@ -558,6 +557,21 @@ class SCSV:
             cert_max_rotations=cert_max,
         )
 
+        # ── V2 / B3 Transition: Validation Parameters ────────────────────
+        val_cfg = raw.get("validation", {})
+        self._fatal_checks = val_cfg.get("fatal", {
+            "malformed_json": True,
+            "invalid_schema": True,
+            "parser_failure": True
+        })
+        self._penalties = val_cfg.get("penalties", {
+            "replay": 0.30,
+            "stale_timestamp": 0.20,
+            "certificate_rotation": 0.15,
+            "physics": 0.25
+        })
+        self._min_val_score = float(val_cfg.get("minimum_validation_score", 0.40))
+
         logger.info(
             "SCSV v2 loaded: %d rules, default_policy=%s, "
             "replay_ttl=%.0fs, freshness_ms=%.0f, "
@@ -647,37 +661,14 @@ class SCSV:
     # Public API – V2 extension (opt-in stateful validation)
     # ------------------------------------------------------------------
 
-    def check_stateful(self, message: Any) -> ValidationResult:
+    def check_stateful(self, message: Any) -> ValidationAssessment:
         """Full stateful validation of a decoded CAM message.
 
-        Runs the following checks in order, short-circuiting on the first
-        failure:
-
-        1. **Defensive parsing** – convert raw dict to ``CamMessage``.
-        2. **Replay detection** – reject duplicate (station_id, msg_id, ts).
-        3. **Timestamp freshness** – reject stale messages.
-        4. **Certificate continuity** – flag excessive certificate rotation.
-        5. **Physical plausibility** – reject impossible kinematics.
-        6. **Rule-table check** – delegate to existing ``check()`` logic.
-
-        This method does **not** modify the behaviour of ``check()``.
-
-        Parameters
-        ----------
-        message:
-            A raw decoded message dict, or a pre-parsed ``CamMessage``.
-
-        Returns
-        -------
-        ValidationResult
-            Immutable verdict.  ``valid=True`` means all checks passed.
-            ``valid=False`` includes a ``reason`` code and ``details`` dict.
-
-        Notes
-        -----
-        * Never raises; all exceptions are caught and returned as
-          ``PARSE_ERROR`` validation failures.
-        * Thread-safe.
+        Refactored to transform B1 into a confidence-aware validation layer.
+        Fatal protocol and parsing errors terminate processing (fatal=True,
+        B2 bypassed). Recoverable validation anomalies deduct configurable
+        penalties from the validation score, returning a complete
+        ValidationAssessment for subsequent B2 evaluation.
         """
         wall_time = time.time()
 
@@ -685,30 +676,88 @@ class SCSV:
             return self._check_stateful_impl(message, wall_time)
         except Exception as exc:
             logger.warning("SCSV.check_stateful: unexpected error: %s", exc, exc_info=True)
-            return ValidationResult(
-                valid=False,
-                score=SCORE_BLOCK,
-                reason=ValidationFailureReason.PARSE_ERROR,
-                details={"error": str(exc)},
+            return ValidationAssessment(
+                fatal=True,
+                validation_score=SCORE_BLOCK,
+                confidence=1.0,
+                reasons=[str(exc)],
+                checks={
+                    "structure": False,
+                    "replay": False,
+                    "timestamp": False,
+                    "certificate": False,
+                    "physics": False
+                },
+                details={"error": str(exc), "minimum_validation_score": self._min_val_score, "reason": ValidationFailureReason.PARSE_ERROR},
                 wall_time=wall_time,
             )
 
-    def _check_stateful_impl(self, message: Any, wall_time: float) -> ValidationResult:
+    def _check_stateful_impl(self, message: Any, wall_time: float) -> ValidationAssessment:
         """Implementation of ``check_stateful`` (separated for testability)."""
 
-        # ── Step 1: Parse ─────────────────────────────────────────────────
+        # ── Step 1: Parse & Structural Fatal Checks ────────────────────────
         if isinstance(message, CamMessage):
             cam = message
             parse_error = None
         else:
             cam, parse_error = safe_parse_cam(message)
 
+        fatal = False
+        reasons = []
+        checks = {
+            "structure": True,
+            "replay": True,
+            "timestamp": True,
+            "certificate": True,
+            "physics": True
+        }
+        primary_reason = None
+
         if cam is None:
-            return ValidationResult(
-                valid=False,
-                score=SCORE_BLOCK,
-                reason=ValidationFailureReason.PARSE_ERROR,
-                details={"error": parse_error or "unknown parse failure"},
+            fatal = True
+            reasons.append(parse_error or "unknown parse failure")
+            checks["structure"] = False
+            primary_reason = ValidationFailureReason.PARSE_ERROR
+        else:
+            # Check mandatory fields for stateful verification
+            missing_fields = []
+            if cam.station_id is None: missing_fields.append("station_id")
+            if cam.timestamp is None: missing_fields.append("timestamp")
+            if cam.latitude is None: missing_fields.append("latitude")
+            if cam.longitude is None: missing_fields.append("longitude")
+            if cam.station_type is None: missing_fields.append("station_type")
+
+            if missing_fields:
+                fatal = True
+                checks["structure"] = False
+                reasons.append(f"Missing mandatory fields: {', '.join(missing_fields)}")
+                primary_reason = ValidationFailureReason.PARSE_ERROR
+
+            # If invalid_numeric_values is configured as fatal
+            if self._fatal_checks.get("invalid_numeric_values", False):
+                if cam.parse_warnings:
+                    fatal = True
+                    checks["structure"] = False
+                    reasons.extend(cam.parse_warnings)
+                    primary_reason = ValidationFailureReason.PARSE_ERROR
+                elif cam.timestamp is not None and cam.timestamp < 0:
+                    fatal = True
+                    checks["timestamp"] = False
+                    reasons.append("Negative timestamp")
+                    primary_reason = ValidationFailureReason.STALE_TIMESTAMP
+
+        if fatal:
+            return ValidationAssessment(
+                fatal=True,
+                validation_score=SCORE_BLOCK,
+                confidence=1.0,
+                reasons=reasons,
+                checks=checks,
+                details={
+                    "error": reasons[0] if reasons else "Parser failure",
+                    "minimum_validation_score": self._min_val_score,
+                    "reason": primary_reason or ValidationFailureReason.PARSE_ERROR
+                },
                 wall_time=wall_time,
             )
 
@@ -724,113 +773,261 @@ class SCSV:
             "message_id": cam.message_id,
             "timestamp": cam.timestamp,
             "parse_warnings": cam.parse_warnings,
+            "minimum_validation_score": self._min_val_score,
         }
 
-        # ── Step 2: Replay detection ──────────────────────────────────────
-        if self._replay_cache.is_replay(cam.station_id, cam.message_id, cam.timestamp):
-            logger.debug(
-                "SCSV.check_stateful: REPLAY detected for station_id=%s msg_id=%s ts=%s",
-                cam.station_id, cam.message_id, cam.timestamp,
-            )
-            return ValidationResult(
-                valid=False,
-                score=SCORE_BLOCK,
-                reason=ValidationFailureReason.REPLAY,
-                details={**base_details, "reject_stage": "replay_cache"},
-                wall_time=wall_time,
-            )
+        validation_score = 1.0
+        primary_reason = None
 
-        # ── Step 3: Timestamp freshness ───────────────────────────────────
-        if cam.timestamp is not None and self._freshness_ms > 0:
-            # generation_delta_time is in ms per ETSI EN 302 637-2
-            msg_wall_ms = cam.timestamp  # treat as ms-epoch reference
-            # Compare against current second modulo 65536 (standard CAM delta time)
-            # For freshness, we use the delta between reported and current time
-            # When timestamp is in the ms range (< 65536), it's relative delta time
-            # not an absolute epoch. Use a lenient check: skip if value looks like a
-            # relative delta rather than an absolute ms timestamp.
-            if cam.timestamp > 1_000_000:  # likely an absolute ms-epoch value
-                now_ms = wall_time * 1000.0
-                age_ms = abs(now_ms - cam.timestamp)
-                if age_ms > self._freshness_ms:
-                    logger.debug(
-                        "SCSV.check_stateful: STALE timestamp: age=%.0fms, tolerance=%.0fms",
-                        age_ms, self._freshness_ms,
-                    )
-                    return ValidationResult(
-                        valid=False,
-                        score=SCORE_BLOCK,
-                        reason=ValidationFailureReason.STALE_TIMESTAMP,
-                        details={**base_details, "age_ms": age_ms, "freshness_ms": self._freshness_ms},
-                        wall_time=wall_time,
-                    )
+        # ── Step 2: Replay detection (Recoverable) ─────────────────────────
+        is_replay = self._replay_cache.is_replay(cam.station_id, cam.message_id, cam.timestamp)
+        if is_replay:
+            checks["replay"] = False
+            validation_score -= self._penalties.get("replay", 0.30)
+            reasons.append("Replay detected")
+            if primary_reason is None:
+                primary_reason = ValidationFailureReason.REPLAY
 
-        # ── Step 4: Certificate rotation check ────────────────────────────
-        if cam.station_id is not None:
-            state = self._state_manager.get_or_create(cam.station_id)
-            # Record cert before checking so current cert is in history
-            if cam.certificate_id is not None:
-                prev_cert = state.cert_ids[-1] if state.cert_ids else None
-                if prev_cert is not None and cam.certificate_id != prev_cert:
-                    state.cert_change_times.append(wall_time)
-                state.cert_ids.append(cam.certificate_id)
+        # ── Step 3: Timestamp freshness (Recoverable) ──────────────────────
+        now_ms = wall_time * 1000.0
+        age_ms = 0.0
+        is_stale_ts = False
+        if cam.timestamp is not None:
+            if cam.timestamp < 0:
+                checks["timestamp"] = False
+                validation_score -= self._penalties.get("stale_timestamp", 0.20)
+                reasons.append("Negative timestamp")
+                if primary_reason is None:
+                    primary_reason = ValidationFailureReason.STALE_TIMESTAMP
+                base_details["age_ms"] = 0.0
+                base_details["freshness_ms"] = self._freshness_ms
+                is_stale_ts = True
+            elif self._freshness_ms > 0:
+                if cam.timestamp > 1_000_000:  # likely an absolute ms-epoch value
+                    age_ms = abs(now_ms - cam.timestamp)
+                    if age_ms > self._freshness_ms:
+                        checks["timestamp"] = False
+                        validation_score -= self._penalties.get("stale_timestamp", 0.20)
+                        reasons.append(f"Timestamp stale (age {age_ms:.1f} ms)")
+                        if primary_reason is None:
+                            primary_reason = ValidationFailureReason.STALE_TIMESTAMP
+                        base_details["age_ms"] = age_ms
+                        base_details["freshness_ms"] = self._freshness_ms
+                        is_stale_ts = True
 
-            if self._state_manager.check_cert_rotation(state):
-                logger.debug(
-                    "SCSV.check_stateful: CERT_ROTATION anomaly for station_id=%s",
-                    cam.station_id,
-                )
-                return ValidationResult(
-                    valid=False,
-                    score=SCORE_BLOCK,
-                    reason=ValidationFailureReason.CERT_ROTATION_ANOMALY,
-                    details={
-                        **base_details,
-                        "cert_id": cam.certificate_id,
-                        "cert_change_count": len(state.cert_change_times),
-                    },
-                    wall_time=wall_time,
-                )
-        else:
-            state = None
+        # ── Step 4: Certificate rotation check (Recoverable) ───────────────
+        state = self._state_manager.get_or_create(cam.station_id)
+        if cam.certificate_id is not None:
+            prev_cert = state.cert_ids[-1] if state.cert_ids else None
+            if prev_cert is not None and cam.certificate_id != prev_cert:
+                state.cert_change_times.append(wall_time)
+            state.cert_ids.append(cam.certificate_id)
 
-        # ── Step 5: Physical plausibility ─────────────────────────────────
+        is_cert_anomaly = self._state_manager.check_cert_rotation(state)
+        if is_cert_anomaly:
+            checks["certificate"] = False
+            validation_score -= self._penalties.get("certificate_rotation", 0.15)
+            reasons.append("Suspicious certificate rotation")
+            if primary_reason is None:
+                primary_reason = ValidationFailureReason.CERT_ROTATION_ANOMALY
+            base_details["cert_id"] = cam.certificate_id
+            base_details["cert_change_count"] = len(state.cert_change_times)
+
+        # ── Step 5: Physical plausibility (Recoverable / Fatal) ────────────
         plausibility_violation = self._plausibility.validate(cam, prev_state=state)
+        is_fatal_phys = False
+        phys_reason = None
+        
         if plausibility_violation:
-            logger.debug(
-                "SCSV.check_stateful: IMPOSSIBLE_KINEMATICS for station_id=%s: %s",
-                cam.station_id, plausibility_violation,
+            if "latitude" in plausibility_violation or "longitude" in plausibility_violation:
+                if self._fatal_checks.get("invalid_coordinates", False):
+                    is_fatal_phys = True
+                    phys_reason = ValidationFailureReason.INVALID_COORDINATES
+            elif "speed" in plausibility_violation:
+                if self._fatal_checks.get("impossible_speed", False):
+                    is_fatal_phys = True
+                    phys_reason = ValidationFailureReason.IMPOSSIBLE_KINEMATICS
+            elif "longitudinal_acceleration" in plausibility_violation:
+                if self._fatal_checks.get("impossible_acceleration", False):
+                    is_fatal_phys = True
+                    phys_reason = ValidationFailureReason.IMPOSSIBLE_KINEMATICS
+            elif "heading" in plausibility_violation:
+                if self._fatal_checks.get("invalid_heading", False):
+                    is_fatal_phys = True
+                    phys_reason = ValidationFailureReason.INVALID_HEADING
+
+        # ── Step 6: Rule-table check (Recoverable) ─────────────────────────
+        rule_score = self.check(cam.station_type, cam.message_id)
+        is_policy_blocked = rule_score == SCORE_BLOCK
+
+        # ── Calculate Validation Confidence (Evidence-Based Model) ──────────
+        # 1. Structural Completeness
+        missing_count = sum(1 for field_name in ["speed", "heading", "longitudinal_acceleration", "yaw_rate"] if getattr(cam, field_name, None) is None)
+        c_struct = max(0.0, 1.0 - 0.1 * missing_count)
+        
+        # 2. Historical Evidence (Continuous Logarithmic Growth Model)
+        max_history = 50
+        c_hist = (
+            0.30
+            + 0.70
+            * min(
+                math.log1p(state.message_count) / math.log1p(max_history),
+                1.0
             )
-            return ValidationResult(
-                valid=False,
-                score=SCORE_BLOCK,
-                reason=ValidationFailureReason.IMPOSSIBLE_KINEMATICS,
-                details={**base_details, "kinematic_violation": plausibility_violation},
+        )
+            
+        # 3. Certificate Stability
+        if is_cert_anomaly:
+            c_cert = 0.60
+        elif not state.cert_ids:
+            c_cert = 0.80
+        else:
+            rotations = len(state.cert_change_times)
+            if rotations == 0:
+                c_cert = 1.00
+            elif rotations == 1:
+                c_cert = 0.95
+            elif rotations == 2:
+                c_cert = 0.80
+            else:
+                c_cert = 0.60
+                
+        # 4. Replay Certainty
+        c_replay = 1.00 # exact match is a definitive observation
+        
+        # 5. Timestamp Reliability
+        if is_stale_ts:
+            c_time = 0.85
+        elif cam.timestamp is None or cam.timestamp < 0:
+            c_time = 0.50
+        else:
+            if cam.timestamp < 65536: # relative delta timestamp
+                c_time = 1.00
+            else:
+                c_time = 1.00 if age_ms <= 1000.0 else 0.85
+                
+        # Combine using weights
+        confidence = (0.15 * c_struct +
+                      0.40 * c_hist +
+                      0.15 * c_replay +
+                      0.15 * c_time +
+                      0.15 * c_cert)
+        confidence = max(0.0, min(1.0, confidence))
+        
+        # If it's a fatal physical sanity check or replay detection, confidence is 1.00
+        if is_fatal_phys or is_replay:
+            confidence = 1.00
+            
+        # Formulate contributors
+        contributors = []
+        if c_struct == 1.0:
+            contributors.append("✓ Structure Valid")
+        else:
+            contributors.append("⚠ Missing Optional Kinematics")
+            
+        if c_cert == 1.0:
+            contributors.append("✓ Stable Certificate History")
+        elif is_cert_anomaly:
+            contributors.append("✗ Certificate Rotation Anomaly Detected")
+        else:
+            contributors.append(f"⚠ Certificate Rotated {len(state.cert_change_times)} Times")
+            
+        if state.message_count > 15:
+            contributors.append(f"✓ {state.message_count} Previous Observations")
+        else:
+            contributors.append(f"⚠ Sparse Observation History ({state.message_count} messages)")
+            
+        if not is_stale_ts and c_time >= 0.99:
+            contributors.append("✓ Timestamp Reliable")
+        elif is_stale_ts:
+            contributors.append("✗ Timestamp Stale/Unreliable")
+        else:
+            contributors.append("⚠ Borderline Timestamp Age")
+            
+        if is_replay:
+            contributors.append("✗ Replay Detected (Cache Match)")
+        else:
+            contributors.append("✓ Replay Cache Checked (No Match)")
+            
+        confidence_breakdown = {
+            "Structural Completeness": c_struct,
+            "Historical Evidence": c_hist,
+            "Certificate Stability": c_cert,
+            "Replay Certainty": c_replay,
+            "Timestamp Reliability": c_time
+        }
+
+        # Add history details to base details
+        base_details.update({
+            "history_count": state.message_count,
+            "historical_confidence": c_hist,
+            "max_history": max_history
+        })
+
+        if is_fatal_phys:
+            checks["physics"] = False
+            fatal_details = dict(base_details)
+            fatal_details.update({
+                "kinematic_violation": plausibility_violation,
+                "reason": phys_reason,
+            })
+            return ValidationAssessment(
+                fatal=True,
+                validation_score=SCORE_BLOCK,
+                confidence=confidence,
+                reasons=[plausibility_violation],
+                checks=checks,
+                details=fatal_details,
                 wall_time=wall_time,
+                confidence_breakdown=confidence_breakdown,
+                confidence_contributors=contributors
             )
+        else:
+            if plausibility_violation:
+                checks["physics"] = False
+                validation_score -= self._penalties.get("physics", 0.25)
+                reasons.append(f"Borderline physics anomaly: {plausibility_violation}")
+                if primary_reason is None:
+                    if "latitude" in plausibility_violation or "longitude" in plausibility_violation:
+                        primary_reason = ValidationFailureReason.INVALID_COORDINATES
+                    elif "heading" in plausibility_violation:
+                        primary_reason = ValidationFailureReason.INVALID_HEADING
+                    else:
+                        primary_reason = ValidationFailureReason.IMPOSSIBLE_KINEMATICS
+                base_details["kinematic_violation"] = plausibility_violation
 
-        # ── Step 6: Rule-table check ──────────────────────────────────────
-        score = self.check(cam.station_type, cam.message_id)
-        if score == SCORE_BLOCK:
-            return ValidationResult(
-                valid=False,
-                score=score,
-                reason=ValidationFailureReason.BLOCKED_BY_POLICY,
-                details={**base_details, "station_type": cam.station_type},
-                wall_time=wall_time,
-            )
+        # Rule-table check block
+        if is_policy_blocked:
+            validation_score = 0.0
+            reasons.append("Blocked by rule table policy")
+            if primary_reason is None:
+                primary_reason = ValidationFailureReason.BLOCKED_BY_POLICY
+            base_details["station_type"] = cam.station_type
 
-        # ── All checks passed → record observation ─────────────────────────
-        if cam.station_id is not None:
-            self._state_manager.record(cam, wall_time)
+        # Ensure validation score is bounded [0.0, 1.0]
+        validation_score = max(0.0, min(1.0, validation_score))
 
-        return ValidationResult(
-            valid=True,
-            score=score,
-            reason=None,
+        if primary_reason is not None:
+            base_details["reason"] = primary_reason
+
+        # ── Record observation state ──────────────────────────────────────
+        self._state_manager.record(cam, wall_time)
+
+        # Cache the assessment on the state
+        assessment = ValidationAssessment(
+            fatal=False,
+            validation_score=validation_score,
+            confidence=confidence,
+            reasons=reasons,
+            checks=checks,
             details=base_details,
             wall_time=wall_time,
+            confidence_breakdown=confidence_breakdown,
+            confidence_contributors=contributors
         )
+        state.last_validation_result = assessment
+
+        return assessment
 
     # ------------------------------------------------------------------
     # Introspection helpers (useful for dashboards / B2 hand-off)

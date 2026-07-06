@@ -326,14 +326,14 @@ class TestCoordinateValidation(unittest.TestCase):
         msg = _make_raw_cam(lat=950_000_000.0)
         result = self.scsv.check_stateful(msg)
         self.assertFalse(result.valid)
-        self.assertEqual(result.reason, ValidationFailureReason.IMPOSSIBLE_KINEMATICS)
+        self.assertEqual(result.reason, ValidationFailureReason.INVALID_COORDINATES)
 
     def test_longitude_out_of_range_rejected(self) -> None:
         """Longitude > 180° (> 1_800_000_000 in ETSI units) must be rejected."""
         msg = _make_raw_cam(lon=1_900_000_000.0)
         result = self.scsv.check_stateful(msg)
         self.assertFalse(result.valid)
-        self.assertEqual(result.reason, ValidationFailureReason.IMPOSSIBLE_KINEMATICS)
+        self.assertEqual(result.reason, ValidationFailureReason.INVALID_COORDINATES)
 
     def test_negative_latitude_boundary_valid(self) -> None:
         """Latitude at exactly −90° must be accepted."""
@@ -375,18 +375,18 @@ class TestImpossibleKinematics(unittest.TestCase):
         self.assertEqual(result.reason, ValidationFailureReason.IMPOSSIBLE_KINEMATICS)
 
     def test_impossible_lateral_acceleration(self) -> None:
-        """Lateral acceleration magnitude > 1500 must be rejected."""
+        """Lateral acceleration magnitude > 1500 is delegated to MBD and must pass SCSV."""
         msg = _make_raw_cam(lat_acc=-2000.0)
         result = self.scsv.check_stateful(msg)
-        self.assertFalse(result.valid)
-        self.assertEqual(result.reason, ValidationFailureReason.IMPOSSIBLE_KINEMATICS)
+        self.assertTrue(result.valid)
+        self.assertNotEqual(result.reason, ValidationFailureReason.IMPOSSIBLE_KINEMATICS)
 
     def test_impossible_yaw_rate(self) -> None:
-        """Yaw rate magnitude > 7500 (75 °/s in ETSI units) must be rejected."""
+        """Yaw rate magnitude > 7500 is delegated to MBD and must pass SCSV."""
         msg = _make_raw_cam(yaw_rate=10000.0)
         result = self.scsv.check_stateful(msg)
-        self.assertFalse(result.valid)
-        self.assertEqual(result.reason, ValidationFailureReason.IMPOSSIBLE_KINEMATICS)
+        self.assertTrue(result.valid)
+        self.assertNotEqual(result.reason, ValidationFailureReason.IMPOSSIBLE_KINEMATICS)
 
     def test_plausible_highway_speed_passes(self) -> None:
         """Speed 3000 (108 km/h) must pass plausibility."""
@@ -395,21 +395,45 @@ class TestImpossibleKinematics(unittest.TestCase):
         self.assertNotEqual(result.reason, ValidationFailureReason.IMPOSSIBLE_KINEMATICS)
 
     def test_validator_heading_change_with_prior_state(self) -> None:
-        """Heading change > 900 (90°) between frames must be flagged."""
+        """Heading change is delegated to MBD and must NOT be flagged in SCSV."""
         state = VehicleState(station_id=1)
         state.headings.append(100.0)
-        cam = self._make_cam_obj(heading=2000.0)  # delta = 1900 > 900
+        cam = self._make_cam_obj(heading=2000.0)
         violation = self.validator.validate(cam, prev_state=state)
-        self.assertIsNotNone(violation, "Extreme heading change must be flagged")
+        self.assertIsNone(violation, "Heading change checks must be bypassed in SCSV")
 
     def test_validator_jerk_with_prior_state(self) -> None:
-        """Acceleration change > 3000 between frames must be flagged as jerk."""
+        """Jerk checks are delegated to MBD and must NOT be flagged in SCSV."""
         state = VehicleState(station_id=1)
         state.accelerations.append(0.0)
-        cam = self._make_cam_obj(lon_acc=3100.0)  # delta = 3100 > 3000
-        # But acc=3100 also exceeds max_acceleration (1500), so violation fires first
+        cam = self._make_cam_obj(lon_acc=1000.0)
         violation = self.validator.validate(cam, prev_state=state)
+        self.assertIsNone(violation, "Jerk checks must be bypassed in SCSV")
+
+    def test_negative_timestamp_rejected(self) -> None:
+        """Negative timestamps must be rejected as recoverable stale timestamp errors."""
+        msg = _make_raw_cam(timestamp=-100.0)
+        result = self.scsv.check_stateful(msg)
+        self.assertFalse(result.valid)
+        self.assertEqual(result.reason, ValidationFailureReason.STALE_TIMESTAMP)
+
+    def test_invalid_heading_encoding(self) -> None:
+        """Heading outside [0, 3600] must be rejected by validator."""
+        cam_too_high = self._make_cam_obj(heading=3601.0)
+        violation = self.validator.validate(cam_too_high)
         self.assertIsNotNone(violation)
+        self.assertIn("heading 3601.0 out of valid range", violation)
+
+        cam_negative = self._make_cam_obj(heading=-1.0)
+        violation = self.validator.validate(cam_negative)
+        self.assertIsNotNone(violation)
+        self.assertIn("heading -1.0 out of valid range", violation)
+
+    def test_behavioral_but_physically_possible_passes(self) -> None:
+        """High acceleration, sharp heading changes, and high yaw rates must pass SCSV."""
+        msg = _make_raw_cam(speed=2000.0, lon_acc=1200.0, heading=900.0, yaw_rate=5000.0)
+        result = self.scsv.check_stateful(msg)
+        self.assertTrue(result.valid)
 
     def test_validator_no_violation_on_valid_message(self) -> None:
         """A normal message must produce no violation."""
@@ -489,6 +513,7 @@ class TestValidationFailureReasonEnum(unittest.TestCase):
             "BLOCKED_BY_POLICY",
             "PARSE_ERROR",
             "INVALID_COORDINATES",
+            "INVALID_HEADING",
         }
         actual = {r.name for r in ValidationFailureReason}
         self.assertEqual(expected, actual, f"Missing or extra reasons: {expected ^ actual}")
@@ -733,6 +758,133 @@ class TestThreadSafety(unittest.TestCase):
 
         # Each unique station_id should have returned False exactly once
         self.assertEqual(len(results), 50)
+
+
+class TestFatalPhysicalSanityChecks(unittest.TestCase):
+    """Verify that physical sanity checks can be configured to be fatal."""
+
+    def setUp(self) -> None:
+        self.scsv = _make_scsv()
+
+    def test_fatal_coordinates(self) -> None:
+        msg = _make_raw_cam(lat=950_000_000.0)
+        result = self.scsv.check_stateful(msg)
+        self.assertTrue(result.fatal)
+        self.assertEqual(result.score, SCORE_BLOCK)
+        self.assertEqual(result.reason, ValidationFailureReason.INVALID_COORDINATES)
+
+    def test_fatal_speed(self) -> None:
+        msg = _make_raw_cam(speed=9000.0)
+        result = self.scsv.check_stateful(msg)
+        self.assertTrue(result.fatal)
+        self.assertEqual(result.score, SCORE_BLOCK)
+        self.assertEqual(result.reason, ValidationFailureReason.IMPOSSIBLE_KINEMATICS)
+
+    def test_fatal_acceleration(self) -> None:
+        msg = _make_raw_cam(lon_acc=2000.0)
+        result = self.scsv.check_stateful(msg)
+        self.assertTrue(result.fatal)
+        self.assertEqual(result.score, SCORE_BLOCK)
+        self.assertEqual(result.reason, ValidationFailureReason.IMPOSSIBLE_KINEMATICS)
+
+    def test_fatal_heading(self) -> None:
+        msg = _make_raw_cam(heading=3601.0)
+        result = self.scsv.check_stateful(msg)
+        self.assertTrue(result.fatal)
+        self.assertEqual(result.score, SCORE_BLOCK)
+        self.assertEqual(result.reason, ValidationFailureReason.INVALID_HEADING)
+
+    def test_fatal_nan_values(self) -> None:
+        msg = _make_raw_cam(speed=float("nan"))
+        result = self.scsv.check_stateful(msg)
+        self.assertTrue(result.fatal)
+        self.assertEqual(result.score, SCORE_BLOCK)
+        self.assertEqual(result.reason, ValidationFailureReason.PARSE_ERROR)
+
+
+class TestEvidenceBasedConfidenceModel(unittest.TestCase):
+    """Verify that validation confidence calculation is evidence-driven."""
+
+    def setUp(self) -> None:
+        self.scsv = _make_scsv()
+
+    def test_new_station(self) -> None:
+        # A new station with 0 historical observations
+        msg = _make_raw_cam(station_id=2001, timestamp=time.time()*1000.0)
+        result = self.scsv.check_stateful(msg)
+        self.assertTrue(result.valid)
+        self.assertEqual(result.validation_score, 1.00)
+        # Moderate confidence (0.60 - 0.75)
+        self.assertTrue(0.60 <= result.confidence <= 0.75, f"Confidence was {result.confidence}")
+
+    def test_long_stable_history(self) -> None:
+        # Accumulate 40 consistent historical observations in the past
+        now = time.time()
+        for i in range(40):
+            msg = _make_raw_cam(station_id=2002, timestamp=(now - (40 - i) * 0.1)*1000.0)
+            result = self.scsv.check_stateful(msg)
+        # High confidence (0.95 - 1.00)
+        self.assertTrue(result.valid)
+        self.assertEqual(result.validation_score, 1.00)
+        self.assertTrue(0.95 <= result.confidence <= 1.00, f"Confidence was {result.confidence}")
+
+    def test_replay_confidence(self) -> None:
+        msg = _make_raw_cam(station_id=2003, timestamp=time.time()*1000.0)
+        self.scsv.check_stateful(msg)  # first send
+        result = self.scsv.check_stateful(msg)  # second send - replay
+        self.assertFalse(result.valid)
+        self.assertEqual(result.validation_score, 0.70)  # reduced score
+        self.assertTrue(result.confidence >= 0.95, f"Confidence was {result.confidence}")
+
+    def test_malformed_json_confidence(self) -> None:
+        result = self.scsv.check_stateful("malformed")
+        self.assertFalse(result.valid)
+        self.assertEqual(result.validation_score, 0.00)
+        self.assertEqual(result.confidence, 1.00)
+
+    def test_certificate_instability(self) -> None:
+        now = time.time()
+        for i, cert in enumerate(["cert-1", "cert-2", "cert-3", "cert-4", "cert-5"]):
+            msg = _make_raw_cam(station_id=2004, timestamp=(now - (5 - i) * 0.1)*1000.0, cert_id=cert)
+            result = self.scsv.check_stateful(msg)
+        # validation score reduced, confidence reduced
+        self.assertFalse(result.valid)
+        self.assertEqual(result.validation_score, 0.85)  # 1.00 - 0.15 cert rotation penalty
+        # Confidence is reduced due to cert instability (c_cert = 0.60)
+        self.assertTrue(result.confidence < 0.90, f"Confidence was {result.confidence}")
+
+    def test_continuous_growth_properties(self) -> None:
+        # 1. Bounded/new sender: check first message confidence is ~0.72 and c_hist is exactly 0.30
+        now = time.time()
+        msg = _make_raw_cam(station_id=2005, timestamp=now*1000.0, cert_id="CERT_CAR_1001")
+        result = self.scsv._check_stateful_impl(msg, wall_time=now)
+        self.assertEqual(result.confidence_breakdown["Historical Evidence"], 0.30)
+        self.assertAlmostEqual(result.confidence, 0.72, places=4)
+
+        # 2. Never decreases, smoothly increases, never exceeds 1.0
+        prev_conf = result.confidence
+        prev_hist = result.confidence_breakdown["Historical Evidence"]
+        
+        for i in range(1, 60):
+            msg = _make_raw_cam(station_id=2005, timestamp=(now + i*0.1)*1000.0, cert_id="CERT_CAR_1001")
+            res = self.scsv._check_stateful_impl(msg, wall_time=now + i*0.1)
+            current_conf = res.confidence
+            current_hist = res.confidence_breakdown["Historical Evidence"]
+            
+            # Monotonically increasing check
+            self.assertTrue(current_hist >= prev_hist, f"History confidence decreased at step {i}: {current_hist} < {prev_hist}")
+            self.assertTrue(current_conf >= prev_conf, f"Overall confidence decreased at step {i}: {current_conf} < {prev_conf}")
+            
+            # Bound check
+            self.assertTrue(current_hist <= 1.00)
+            self.assertTrue(current_conf <= 1.00)
+            
+            prev_conf = current_conf
+            prev_hist = current_hist
+
+        # After 60 observations (exceeding MAX_HISTORY = 50), historical confidence saturates to 1.0
+        self.assertEqual(prev_hist, 1.00)
+        self.assertEqual(prev_conf, 1.00)
 
 
 # ---------------------------------------------------------------------------
