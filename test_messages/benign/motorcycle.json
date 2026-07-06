@@ -1,0 +1,29 @@
+{
+  "header": {
+    "station_id": 1003,
+    "message_id": 1
+  },
+  "cam": {
+    "generation_delta_time": 1783068814222.0823,
+    "cam_parameters": {
+      "basic_container": {
+        "station_type": 4,
+        "reference_position": {
+          "latitude": 485512200,
+          "longitude": 96123456
+        }
+      },
+      "high_frequency_container": {
+        "basic_vehicle_container_high_frequency": {
+          "speed": 2200,
+          "heading": 900,
+          "yaw_rate": 0,
+          "steering_wheel_angle": 0,
+          "lateral_acceleration": 0,
+          "longitudinal_acceleration": 150
+        }
+      }
+    }
+  },
+  "certificate_id": "CERT_BIKE_1003"
+}

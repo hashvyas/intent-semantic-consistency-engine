@@ -1,0 +1,18 @@
+{
+  "header": {
+    "station_id": "not-an-int-id",
+    "message_id": 1
+  },
+  "cam": {
+    "generation_delta_time": "not-a-timestamp",
+    "cam_parameters": {
+      "basic_container": {
+        "station_type": 5,
+        "reference_position": {
+          "latitude": NaN,
+          "longitude": 96123456
+        }
+      }
+    }
+  }
+}

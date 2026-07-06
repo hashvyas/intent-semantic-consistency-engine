@@ -1,0 +1,29 @@
+{
+  "header": {
+    "station_id": 1061,
+    "message_id": 1
+  },
+  "cam": {
+    "generation_delta_time": 10100.0,
+    "cam_parameters": {
+      "basic_container": {
+        "station_type": 5,
+        "reference_position": {
+          "latitude": 485695345,
+          "longitude": 96306456
+        }
+      },
+      "high_frequency_container": {
+        "basic_vehicle_container_high_frequency": {
+          "speed": 1111,
+          "heading": 875,
+          "yaw_rate": -11,
+          "steering_wheel_angle": 0,
+          "lateral_acceleration": 0,
+          "longitudinal_acceleration": 0
+        }
+      }
+    }
+  },
+  "is_attacker": false
+}

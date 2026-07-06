@@ -1,0 +1,29 @@
+{
+  "header": {
+    "station_id": 9999,
+    "message_id": 2
+  },
+  "cam": {
+    "generation_delta_time": 1783068814223.0828,
+    "cam_parameters": {
+      "basic_container": {
+        "station_type": 15,
+        "reference_position": {
+          "latitude": 485512000,
+          "longitude": 96123000
+        }
+      },
+      "high_frequency_container": {
+        "basic_vehicle_container_high_frequency": {
+          "speed": 0,
+          "heading": 0,
+          "yaw_rate": 0,
+          "steering_wheel_angle": 0,
+          "lateral_acceleration": 0,
+          "longitudinal_acceleration": 0
+        }
+      }
+    }
+  },
+  "certificate_id": "CERT_RSU_9999"
+}

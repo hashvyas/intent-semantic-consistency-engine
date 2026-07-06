@@ -1,0 +1,147 @@
+[
+  {
+    "header": {
+      "station_id": 9991,
+      "message_id": 1
+    },
+    "cam": {
+      "generation_delta_time": 1783068814228.9072,
+      "cam_parameters": {
+        "basic_container": {
+          "station_type": 5,
+          "reference_position": {
+            "latitude": 485512345,
+            "longitude": 96123456
+          }
+        },
+        "high_frequency_container": {
+          "basic_vehicle_container_high_frequency": {
+            "speed": 1500,
+            "heading": 900,
+            "yaw_rate": 0,
+            "steering_wheel_angle": 0,
+            "lateral_acceleration": 0,
+            "longitudinal_acceleration": 100
+          }
+        }
+      }
+    },
+    "certificate_id": "ROTATING_CERT_ID_0"
+  },
+  {
+    "header": {
+      "station_id": 9991,
+      "message_id": 1
+    },
+    "cam": {
+      "generation_delta_time": 1783068815228.9072,
+      "cam_parameters": {
+        "basic_container": {
+          "station_type": 5,
+          "reference_position": {
+            "latitude": 485512345,
+            "longitude": 96123456
+          }
+        },
+        "high_frequency_container": {
+          "basic_vehicle_container_high_frequency": {
+            "speed": 1500,
+            "heading": 900,
+            "yaw_rate": 0,
+            "steering_wheel_angle": 0,
+            "lateral_acceleration": 0,
+            "longitudinal_acceleration": 100
+          }
+        }
+      }
+    },
+    "certificate_id": "ROTATING_CERT_ID_1"
+  },
+  {
+    "header": {
+      "station_id": 9991,
+      "message_id": 1
+    },
+    "cam": {
+      "generation_delta_time": 1783068816228.9072,
+      "cam_parameters": {
+        "basic_container": {
+          "station_type": 5,
+          "reference_position": {
+            "latitude": 485512345,
+            "longitude": 96123456
+          }
+        },
+        "high_frequency_container": {
+          "basic_vehicle_container_high_frequency": {
+            "speed": 1500,
+            "heading": 900,
+            "yaw_rate": 0,
+            "steering_wheel_angle": 0,
+            "lateral_acceleration": 0,
+            "longitudinal_acceleration": 100
+          }
+        }
+      }
+    },
+    "certificate_id": "ROTATING_CERT_ID_2"
+  },
+  {
+    "header": {
+      "station_id": 9991,
+      "message_id": 1
+    },
+    "cam": {
+      "generation_delta_time": 1783068817228.9072,
+      "cam_parameters": {
+        "basic_container": {
+          "station_type": 5,
+          "reference_position": {
+            "latitude": 485512345,
+            "longitude": 96123456
+          }
+        },
+        "high_frequency_container": {
+          "basic_vehicle_container_high_frequency": {
+            "speed": 1500,
+            "heading": 900,
+            "yaw_rate": 0,
+            "steering_wheel_angle": 0,
+            "lateral_acceleration": 0,
+            "longitudinal_acceleration": 100
+          }
+        }
+      }
+    },
+    "certificate_id": "ROTATING_CERT_ID_3"
+  },
+  {
+    "header": {
+      "station_id": 9991,
+      "message_id": 1
+    },
+    "cam": {
+      "generation_delta_time": 1783068818228.9072,
+      "cam_parameters": {
+        "basic_container": {
+          "station_type": 5,
+          "reference_position": {
+            "latitude": 485512345,
+            "longitude": 96123456
+          }
+        },
+        "high_frequency_container": {
+          "basic_vehicle_container_high_frequency": {
+            "speed": 1500,
+            "heading": 900,
+            "yaw_rate": 0,
+            "steering_wheel_angle": 0,
+            "lateral_acceleration": 0,
+            "longitudinal_acceleration": 100
+          }
+        }
+      }
+    },
+    "certificate_id": "ROTATING_CERT_ID_4"
+  }
+]
