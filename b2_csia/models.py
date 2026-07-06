@@ -497,6 +497,17 @@ class ExplainabilityReport:
     vehicle_profile_label: str
     raw_scores: Dict[str, float]
 
+    validation_score: float = 1.0
+    validation_confidence: float = 1.0
+    fatal: bool = False
+    validation_reasons: List[str] = field(default_factory=list)
+    applied_penalties: Dict[str, float] = field(default_factory=dict)
+    belief: float = 1.0
+    disbelief: float = 0.0
+    uncertainty: float = 0.0
+    evidence_summary: Dict[str, str] = field(default_factory=dict)
+    evidence_reasons: List[str] = field(default_factory=list)
+
 
 # ---------------------------------------------------------------------------
 # AnalysisPlugin protocol
