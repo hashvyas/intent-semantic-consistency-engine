@@ -1,0 +1,49 @@
+[
+    {
+        "_comment": "Test 1: The Unknown Vehicle (Valid JSON, but unregistered station_type)",
+        "cam": {
+            "cam_parameters": {
+                "basic_container": {
+                    "station_type": 999
+                }
+            }
+        },
+        "header": {
+            "message_id": 1,
+            "station_id": 1001
+        }
+    },
+    {
+        "_comment": "Test 2: The Corrupted Radio (Missing the station_type completely)",
+        "cam": {
+            "cam_parameters": {
+                "basic_container": {}
+            }
+        },
+        "header": {
+            "message_id": 1,
+            "station_id": 1002
+        }
+    },
+    {
+        "_comment": "Test 3: The Hacker (Wrong data type: passing a String instead of an Integer)",
+        "cam": {
+            "cam_parameters": {
+                "basic_container": {
+                    "station_type": "DROP TABLE vehicles;"
+                }
+            }
+        },
+        "header": {
+            "message_id": 1,
+            "station_id": 1003
+        }
+    },
+    {
+        "_comment": "Test 4: The Empty Shell (Completely empty payload)",
+        "header": {
+            "message_id": 1,
+            "station_id": 1004
+        }
+    }
+]

@@ -498,3 +498,22 @@ b2_vehicle_profiles:
     expected_update_hz:     2.0
     heading_tolerance:      30.0
     max_speed:              3.0
+
+# ---------------------------------------------------------------------------
+# Transition to B3 decision layer: B1 Validation Scoring and Penalties
+# ---------------------------------------------------------------------------
+validation:
+  fatal:
+    malformed_json: true
+    invalid_schema: true
+    parser_failure: true
+    invalid_coordinates: true
+    impossible_speed: true
+    impossible_acceleration: true
+    invalid_heading: true
+    invalid_numeric_values: true
+  penalties:
+    replay: 0.30
+    stale_timestamp: 0.20
+    certificate_rotation: 0.15
+  minimum_validation_score: 0.40
