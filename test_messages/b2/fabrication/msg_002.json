@@ -1,22 +1,22 @@
 {
   "header": {
-    "station_id": 1001,
+    "station_id": 1003,
     "message_id": 1
   },
   "cam": {
-    "generation_delta_time": 4100.0,
+    "generation_delta_time": 5000.0,
     "cam_parameters": {
       "basic_container": {
         "station_type": 5,
         "reference_position": {
-          "latitude": 485515345,
-          "longitude": 96126456
+          "latitude": 485518345,
+          "longitude": 96129456
         }
       },
       "high_frequency_container": {
         "basic_vehicle_container_high_frequency": {
-          "speed": 1179,
-          "heading": 885,
+          "speed": 1092,
+          "heading": 889,
           "yaw_rate": -5,
           "steering_wheel_angle": 0,
           "lateral_acceleration": 0,
@@ -25,5 +25,7 @@
       }
     }
   },
-  "is_attacker": false
+  "is_attacker": false,
+  "certificate_id": 1003,
+  "cert_id": 1003
 }
