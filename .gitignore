@@ -24,3 +24,5 @@ env/
 # Operating system files
 .DS_Store
 Thumbs.db
+scratch/diagnostic.py
+scratch/test_variation.py
