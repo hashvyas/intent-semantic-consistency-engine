@@ -567,9 +567,15 @@ class CSIA:
 
         return registry
 
-    # -----------------------------------------------------------------------
-    # Public API
-    # -----------------------------------------------------------------------
+    def reset(self) -> None:
+        """Resets the stateful components of the CSIA engine."""
+        self._graph_builder = ObservabilityGraphBuilder()
+        self._trust_histories = {}
+        if hasattr(self, "_threshold_engine"):
+            self._threshold_engine._history_distances = []
+            self._threshold_engine._running_mean = 0.0
+            self._threshold_engine._running_var = 0.0
+            self._threshold_engine._running_count = 0
 
     def check(self, messages: List[Dict[str, Any]]) -> Dict[str, float]:
         """Analyse a window of decoded CAM messages for coordinated behaviour."""
@@ -744,7 +750,16 @@ class CSIA:
         now_wall = time.time()
         context_conf = self._raw.get("motion_context", {})
 
-        # 1. Observability Graph
+        target_msg = valid[-1] if valid else None
+        target_sid = _nested_get_any(target_msg, "header.station_id") if target_msg else None
+
+        # 1. Motion Context (Run before Observability Graph to dynamically infer context)
+        if "motion_context" in self.enabled_modules:
+            context_assess = self._context_engine.infer_context(valid, cluster_id=id(valid), config=context_conf)
+        else:
+            context_assess = ContextAssessment("urban", 0.5, 0.5, {}, 1.0)
+
+        # 2. Observability Graph
         if "observability_graph" in self.enabled_modules:
             for msg in valid:
                 sid = _nested_get_any(msg, "header.station_id")
@@ -764,16 +779,10 @@ class CSIA:
                     timestamp_ns=timestamp,
                     station_type=st,
                     wall_time=now_wall,
-                    context="urban",
+                    context=context_assess.context, # Use dynamic inferred context
                     lane_position=lane,
                     raw_msg=msg
                 )
-
-        # 2. Motion Context
-        if "motion_context" in self.enabled_modules:
-            context_assess = self._context_engine.infer_context(valid, cluster_id=id(valid), config=context_conf)
-        else:
-            context_assess = ContextAssessment("urban", 0.5, 0.5, {}, 1.0)
 
         # 3. Adaptive Thresholds
         speeds = []
@@ -802,14 +811,77 @@ class CSIA:
         identity_consistency, identity_conf, _ = IdentityConsistencyExtractor().extract(valid)
         rsu_corroboration, rsu_conf, _ = RSUCorroborationExtractor().extract(valid, self._graph_builder.graph)
 
+        # Target-specific adjustments to prevent rolling-window false positives on benign nodes
+        target_msgs = [m for m in valid if isinstance(m, dict) and _nested_get_any(m, "header.station_id") == target_sid]
+        other_msgs = [m for m in valid if isinstance(m, dict) and _nested_get_any(m, "header.station_id") != target_sid]
+        
+        if len(target_msgs) <= 1:
+            identity_consistency = 1.0
+            
+        if len(other_msgs) >= 1:
+            # Spatial Similarity: measure average distance of target_sid to others
+            lat_t = _nested_get(target_msg, self._lat_field)
+            lon_t = _nested_get(target_msg, self._lon_field)
+            dists = []
+            for m in other_msgs:
+                lat_o = _nested_get(m, self._lat_field)
+                lon_o = _nested_get(m, self._lon_field)
+                dists.append(_haversine_m(lat_t, lon_t, lat_o, lon_o))
+            avg_d = np.mean(dists)
+            spatial_sim = math.exp(-0.01 * avg_d)
+            
+            # Temporal Similarity: measure average time delta of target_sid to others
+            ts_t = _nested_get(target_msg, self._ts_field)
+            ts_diffs = []
+            for m in other_msgs:
+                ts_o = _nested_get(m, self._ts_field)
+                ts_diffs.append(abs(ts_t - ts_o))
+            avg_ts_diff = np.mean(ts_diffs)
+            temporal_sim = 1.0 / (1.0 + (avg_ts_diff / 100.0))
+            
+            # Kinematic Similarity: measure average speed and circular heading difference of target_sid to others
+            target_spd = _nested_get(target_msg, "cam.cam_parameters.high_frequency_container.basic_vehicle_container_high_frequency.speed")
+            target_hd = _nested_get(target_msg, "cam.cam_parameters.high_frequency_container.basic_vehicle_container_high_frequency.heading")
+            other_speeds = []
+            other_headings = []
+            for m in other_msgs:
+                spd = _nested_get(m, "cam.cam_parameters.high_frequency_container.basic_vehicle_container_high_frequency.speed")
+                hd = _nested_get(m, "cam.cam_parameters.high_frequency_container.basic_vehicle_container_high_frequency.heading")
+                if spd is not None:
+                    other_speeds.append(spd)
+                if hd is not None:
+                    other_headings.append(hd)
+                    
+            if other_speeds and target_spd is not None:
+                avg_spd_diff = np.mean([abs(target_spd - s) for s in other_speeds])
+                sim_speed = 1.0 / (1.0 + avg_spd_diff / 100.0)
+            else:
+                sim_speed = 1.0
+                
+            if other_headings and target_hd is not None:
+                th_rad = math.radians(target_hd * 0.1)
+                diffs = []
+                for h in other_headings:
+                    oh_rad = math.radians(h * 0.1)
+                    diffs.append(1.0 - abs(math.cos(th_rad - oh_rad)))
+                sim_heading = 1.0 - np.mean(diffs)
+            else:
+                sim_heading = 1.0
+                
+            kinematic_sim = 0.5 * sim_speed + 0.5 * sim_heading
+
         # 5. Behavioral Reasoning / Profile Matching vs Standard Fusion
-        target_msg = valid[-1] if valid else None
         val_assess = target_msg.get("_validation_assessment") if target_msg else None
         val_score = val_assess.validation_score if val_assess else 1.0
         val_conf = val_assess.confidence if val_assess else 1.0
 
         if "behavioral_reasoning" in self.enabled_modules:
             prov = Provenance(modules={"kinematic"}, min_evidence_quality=0.9, min_confidence=0.8)
+            msg_type = target_msg.get("message_type") if target_msg else None
+            default_trust = 0.50 if msg_type == "DENM" else 0.90
+            historical_trust = default_trust
+            if target_sid is not None and target_sid in self._trust_histories:
+                historical_trust = self._trust_histories[target_sid].current
             evidence = BehaviorEvidence(
                 spatial_similarity=spatial_sim,
                 temporal_similarity=temporal_sim,
@@ -818,7 +890,7 @@ class CSIA:
                 graph_connectivity=graph_sim,
                 identity_consistency=identity_consistency,
                 rsu_corroboration=rsu_corroboration,
-                historical_trust=0.9,
+                historical_trust=historical_trust,
                 confidence=min(spatial_conf, temporal_conf, kinematic_conf, semantic_conf),
                 provenance=prov,
                 validation_score=val_score,
@@ -839,27 +911,32 @@ class CSIA:
             )
             trust_score = float(min(1.0, max(0.0, combined)))
 
-        target_msg = valid[-1] if valid else None
-        target_sid = _nested_get_any(target_msg, "header.station_id") if target_msg else None
-        
         node_mf = MassFunction(trust_score, 0.0, 1.0 - trust_score)
 
         # 6. Trust Propagation
         if "trust_propagation" in self.enabled_modules and "observability_graph" in self.enabled_modules:
             initial_beliefs = {}
-            for msg in valid:
-                sid = _nested_get_any(msg, "header.station_id")
-                if sid is not None:
-                    # Specific validation metadata for this message
-                    m_assess = msg.get("_validation_assessment")
+            for nid in self._graph_builder.graph.nodes:
+                if nid == target_sid:
+                    # Current target vehicle: initialize with BRE trust score discounted by B1 validation score
+                    m_assess = target_msg.get("_validation_assessment")
                     m_val_score = m_assess.validation_score if m_assess else 1.0
                     m_val_conf = m_assess.confidence if m_assess else 1.0
                     
                     combined_trust = trust_score * m_val_score
                     combined_confidence = 0.9 * m_val_conf
-                    initial_beliefs[sid] = MassFunction.from_trust_confidence(
+                    initial_beliefs[nid] = MassFunction.from_trust_confidence(
                         combined_trust, combined_confidence, origin_module="local"
                     )
+                elif nid in self._trust_histories:
+                    # Existing node in history: retain historical trust
+                    hist_trust = self._trust_histories[nid].current
+                    initial_beliefs[nid] = MassFunction.from_trust_confidence(
+                        hist_trust, 0.9, origin_module="history"
+                    )
+                else:
+                    # Completely new node: default fully trusted belief
+                    initial_beliefs[nid] = MassFunction(1.0, 0.0, 0.0)
 
             propagated, meta = self._propagation_engine.propagate(
                 self._graph_builder.graph,
@@ -867,11 +944,35 @@ class CSIA:
                 self._raw.get("trust_propagation", {})
             )
             if propagated:
-                trust_score = min(float(p.belief) for p in propagated.values())
+                # Update trust histories for all propagated nodes
+                for nid, mf in propagated.items():
+                    if nid not in self._trust_histories:
+                        self._trust_histories[nid] = TrustHistory(
+                            station_id=nid,
+                            window=self._trust_history_window,
+                            decay_alpha=self._trust_decay_alpha,
+                            recovery_beta=self._trust_recovery_beta
+                        )
+                    self._trust_histories[nid].update(float(mf.belief))
+                
+                # Extract target vehicle's trust score
                 if target_sid is not None and target_sid in propagated:
                     node_mf = propagated[target_sid]
+                    trust_score = float(node_mf.belief)
                 else:
+                    trust_score = min(float(p.belief) for p in propagated.values())
                     node_mf = MassFunction(trust_score, 0.0, 1.0 - trust_score)
+        else:
+            # If trust propagation is not enabled, update target node trust history using BRE trust_score
+            if target_sid is not None:
+                if target_sid not in self._trust_histories:
+                    self._trust_histories[target_sid] = TrustHistory(
+                        station_id=target_sid,
+                        window=self._trust_history_window,
+                        decay_alpha=self._trust_decay_alpha,
+                        recovery_beta=self._trust_recovery_beta
+                    )
+                self._trust_histories[target_sid].update(trust_score)
         
         return {
             "trust":                trust_score,

@@ -257,6 +257,10 @@ class ExperimentRunner:
 
     def run_experiment(self, config: ExperimentConfig) -> Tuple[EvaluationMetrics, Dict[str, Any]]:
         """Runs the experiment and calculates performance and detection metrics."""
+        # Reset CSIA engine state to avoid state pollution between runs
+        if hasattr(self.csia, "reset"):
+            self.csia.reset()
+
         # 1. Generate dataset
         messages = self.generator.generate_scenario(config)
 
