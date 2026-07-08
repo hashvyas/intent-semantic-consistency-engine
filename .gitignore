@@ -26,3 +26,4 @@ env/
 Thumbs.db
 scratch/diagnostic.py
 scratch/test_variation.py
+test_messages/held_out/

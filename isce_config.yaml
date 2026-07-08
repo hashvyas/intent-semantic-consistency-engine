@@ -517,3 +517,12 @@ validation:
     stale_timestamp: 0.20
     certificate_rotation: 0.15
   minimum_validation_score: 0.40
+
+# ---------------------------------------------------------------------------
+# B3 Semantic Gate Model Configuration
+# ---------------------------------------------------------------------------
+b3_semantic_gate:
+  model_path: "b3/solution_stb/b3_semantic_gate/model/semantic_gate_v3"
+  max_length: 256
+  batch_size: 32
+  device: null  # auto-detects cuda/cpu when null
