@@ -992,6 +992,7 @@ def main():
     parser.add_argument("--verbose", action="store_true", default=True, help="Print detailed walkthrough logs")
     parser.add_argument("--regression", action="store_true", help="Run the regression test suite batch")
     parser.add_argument("--add-regression", help="Copy specified failing message file to the regression suite")
+    parser.add_argument("--pipeline", action="store_true", help="Run validation using the new ISCEPipeline orchestrator")
     
     # Hide default help message on parameter conflict
     args = parser.parse_args()
@@ -1062,7 +1063,103 @@ def main():
     
     scsv = SCSV()
     csia = CSIA(config_overrides=config_overrides)
-    
+
+    # If --pipeline flag is set, run using the new ISCEPipeline orchestrator optionally
+    if args.pipeline:
+        from pipeline.orchestrator import ISCEPipeline
+        pipeline_instance = ISCEPipeline(scsv=scsv, csia=csia)
+        passed_messages = []
+        logs = []
+        summary = {
+            "total": len(messages),
+            "passed": 0,
+            "failed": 0,
+            "b1_latency_avg": 0.0,
+            "b2_latency_avg": 0.0,
+            "total_latency_avg": 0.0,
+            "failure_reasons": {}
+        }
+        
+        b1_latencies = []
+        b2_latencies = []
+        total_latencies = []
+        
+        print(f"\n[ISCEPipeline] Processing {len(messages)} messages...")
+        for idx, msg in enumerate(messages):
+            passed_messages.append(msg)
+            
+            # Form window of past messages matching time window
+            window_size_ms = csia._window_size_ns / 1e6
+            ts = _nested_get_any(msg, "cam.generation_delta_time")
+            current_ts = ts if ts is not None else 0.0
+            
+            window = []
+            for m in passed_messages:
+                m_ts = _nested_get_any(m, "cam.generation_delta_time")
+                m_ts = m_ts if m_ts is not None else 0.0
+                if abs(current_ts - m_ts) <= window_size_ms:
+                    window.append(m)
+            
+            # Run pipeline
+            pipeline_result = pipeline_instance.run(window, context=context_to_use)
+            
+            b1_res = pipeline_result["b1"]
+            b2_res = pipeline_result["b2"]
+            b3_res = pipeline_result["b3"]
+            decision = pipeline_result["decision"]
+            reason = pipeline_result["reason"]
+            fusion = pipeline_result["fusion"]
+            latencies = pipeline_result["latencies"]
+            
+            b2_valid = decision in ("ACCEPT", "CAUTION")
+            if b2_valid:
+                summary["passed"] += 1
+            else:
+                summary["failed"] += 1
+                
+            b1_latencies.append(latencies["b1_ms"])
+            b2_latencies.append(latencies["b2_ms"])
+            total_latencies.append(latencies["total_ms"])
+            
+            if args.log:
+                logs.append({
+                    "input": msg,
+                    "pipeline_result": pipeline_result,
+                    "final_assessment": "PASS" if b2_valid else "FAIL"
+                })
+                
+            if args.verbose:
+                print("\n" + "="*50)
+                print(f"PIPELINE RUN: Msg {idx+1}/{len(messages)}")
+                print("="*50)
+                print(f"B1 Valid:           {b1_res['valid']}")
+                print(f"B1 Fatal:           {b1_res['fatal']}")
+                print(f"B2 Trust:           {b2_res.get('trust', 1.0):.4f}")
+                print(f"Synthesized Message: {pipeline_result['synthesized_message']['text']}")
+                print(f"B3 Available:       {b3_res['available']}")
+                print(f"B3 Status:          {b3_res['status']}")
+                print(f"Final Decision:     {decision}")
+                print(f"Reason:             {reason}")
+                print(f"Fusion details:     {fusion}")
+                print(f"Latency Profile:    {latencies}")
+                
+        summary["b1_latency_avg"] = float(np.mean(b1_latencies)) if b1_latencies else 0.0
+        summary["b2_latency_avg"] = float(np.mean(b2_latencies)) if b2_latencies else 0.0
+        summary["total_latency_avg"] = float(np.mean(total_latencies)) if total_latencies else 0.0
+        
+        if args.log:
+            save_log_file(logs, summary)
+            
+        print("\n" + "="*50)
+        print("PIPELINE BATCH EXECUTION SUMMARY")
+        print("="*50)
+        print(f"Total Messages: {summary['total']}")
+        print(f"Passed:         {summary['passed']}")
+        print(f"Failed:         {summary['failed']}")
+        print(f"Average Total Latency: {summary['total_latency_avg']:.4f} ms")
+        print("="*50)
+        sys.exit(0)
+
     # Run the validation harness
     logs, summary = run_pipeline(
         messages=messages,

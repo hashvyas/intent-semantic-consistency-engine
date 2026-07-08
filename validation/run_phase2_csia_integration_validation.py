@@ -174,7 +174,8 @@ def run_e2e_pipeline(
     target_sid: int,
     attacker_ids: List[int],
     historical_trust: float = 0.90,
-    context: str = "rural"
+    context: str = "rural",
+    use_pipeline: bool = False
 ) -> Dict[str, Any]:
     """Runs V2X messages through the complete 6-stage CSIA pipeline with correct boundaries."""
     valid = [m for m in messages if isinstance(m, dict) and m]
@@ -364,6 +365,17 @@ def run_e2e_pipeline(
     # Outgoing is total change target node inflicts on neighbors
     outgoing_influence = sum(propagated[j].belief - initial_beliefs[j].belief for j in csia._graph_builder.graph.nodes if j != target_sid) if propagated else 0.0
 
+    meta_dict = meta
+    if use_pipeline:
+        from pipeline.orchestrator import ISCEPipeline
+        import copy
+        pipeline_instance = ISCEPipeline(csia=csia)
+        # Deep copy to prevent mutation pollution
+        pipeline_msgs = copy.deepcopy(valid)
+        pipeline_res = pipeline_instance.run(pipeline_msgs, context=context)
+        meta_dict = copy.deepcopy(meta)
+        meta_dict["pipeline_result"] = pipeline_res
+
     return {
         "nodes": node_count,
         "edges": edge_count,
@@ -384,7 +396,7 @@ def run_e2e_pipeline(
         "final_trust_score": final_trust,
         "final_node_mf": final_node_mf,
         "propagation_delta": propagation_delta,
-        "meta": meta,
+        "meta": meta_dict,
         "latencies": {
             "observability": obs_latency,
             "threshold": thr_latency,
@@ -401,7 +413,7 @@ def run_e2e_pipeline(
 # Test Runner Core
 # ---------------------------------------------------------------------------
 
-def run_integration_tests() -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+def run_integration_tests(use_pipeline: bool = False) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     overrides = {
         "research_extensions": {
             "enabled": True,
@@ -423,7 +435,7 @@ def run_integration_tests() -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         create_v2x_message(1001 + i, 485512000 + i*20, 96123000 + i*20, 1500 + i*50, 900 + i*10, 4000.0 + i*100.0, 1001 + i, station_type=3 + i)
         for i in range(5)
     ]
-    res1 = run_e2e_pipeline(csia, msgs1, target_sid=1001, attacker_ids=[], context="all")
+    res1 = run_e2e_pipeline(csia, msgs1, target_sid=1001, attacker_ids=[], context="all", use_pipeline=use_pipeline)
     test_results.append({
         "id": 1, "name": "Benign Cooperative Traffic", "scenario": "Normal traffic.",
         "expected": "Trusted",
@@ -442,7 +454,7 @@ def run_integration_tests() -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     for i in range(5):
         msgs2.append(create_v2x_message(8001 + i, 485512000, 96123000, 1500, 900, 4000.0 + i*25.0, 8888))
     
-    res2 = run_e2e_pipeline(csia, msgs2, target_sid=8001, attacker_ids=[8001, 8002, 8003, 8004, 8005])
+    res2 = run_e2e_pipeline(csia, msgs2, target_sid=8001, attacker_ids=[8001, 8002, 8003, 8004, 8005], use_pipeline=use_pipeline)
     test_results.append({
         "id": 2, "name": "Replay Attack", "scenario": "Replay attack entering the pipeline.",
         "expected": "Replay Attack",
@@ -459,7 +471,7 @@ def run_integration_tests() -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     for i in range(5):
         msgs3.append(create_v2x_message(9001 + i, 485512000, 96123000, 1500, 900, 4000.0, 9999))
         
-    res3 = run_e2e_pipeline(csia, msgs3, target_sid=9001, attacker_ids=[9001, 9002, 9003, 9004, 9005])
+    res3 = run_e2e_pipeline(csia, msgs3, target_sid=9001, attacker_ids=[9001, 9002, 9003, 9004, 9005], use_pipeline=use_pipeline)
     test_results.append({
         "id": 3, "name": "Sybil Attack", "scenario": "Multiple identities with identical behavior.",
         "expected": "Sybil Attack",
@@ -477,7 +489,7 @@ def run_integration_tests() -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     for i in range(5):
         msgs4.append(create_v2x_message(3001 + i, 485512000 + i*2000, 96123000, 1500 + i*200, 900, 4000.0 + i*10.0, 3001 + i))
         
-    res4 = run_e2e_pipeline(csia, msgs4, target_sid=3001, attacker_ids=[3001, 3002, 3003, 3004, 3005])
+    res4 = run_e2e_pipeline(csia, msgs4, target_sid=3001, attacker_ids=[3001, 3002, 3003, 3004, 3005], use_pipeline=use_pipeline)
     test_results.append({
         "id": 4, "name": "Position Fabrication", "scenario": "Vehicle transmits inconsistent positions.",
         "expected": "Position Fabrication",
@@ -495,7 +507,7 @@ def run_integration_tests() -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     for i in range(5):
         msgs5.append(create_v2x_message(4001 + i, 485512000 + i*10, 96123000 + i*10, 1500 if i < 4 else 9999, 900 if i < 4 else 2700, 4000.0 + i*100.0, 4001 + i))
         
-    res5 = run_e2e_pipeline(csia, msgs5, target_sid=4001, attacker_ids=[4001, 4002, 4003, 4004, 4005], historical_trust=0.50)
+    res5 = run_e2e_pipeline(csia, msgs5, target_sid=4001, attacker_ids=[4001, 4002, 4003, 4004, 4005], historical_trust=0.50, use_pipeline=use_pipeline)
     test_results.append({
         "id": 5, "name": "Speed Manipulation", "scenario": "Vehicle reports impossible speed.",
         "expected": "Speed Manipulation",
@@ -513,7 +525,7 @@ def run_integration_tests() -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         msg = create_v2x_message(7001 + i, 485512000 + i*10, 96123000 + i*10, 1500, 900, 4000.0 + i*1.0, 7001 + i, msg_type="DENM")
         msgs6.append(msg)
         
-    res6 = run_e2e_pipeline(csia, msgs6, target_sid=7001, attacker_ids=[7001, 7002, 7003, 7004, 7005])
+    res6 = run_e2e_pipeline(csia, msgs6, target_sid=7001, attacker_ids=[7001, 7002, 7003, 7004, 7005], use_pipeline=use_pipeline)
     test_results.append({
         "id": 6, "name": "Coordinated Collusion", "scenario": "Multiple malicious vehicles reinforce each other.",
         "expected": "Coordinated Collusion",
@@ -531,7 +543,7 @@ def run_integration_tests() -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         msg = create_v2x_message(6001 + i, 485512000 + i*200, 96123000 + i*200, 1500, 900, 4000.0 + i*10.0, 6001 + i, msg_type="DENM")
         msgs7.append(msg)
         
-    res7 = run_e2e_pipeline(csia, msgs7, target_sid=6001, attacker_ids=[6001, 6002, 6003, 6004, 6005], historical_trust=0.10)
+    res7 = run_e2e_pipeline(csia, msgs7, target_sid=6001, attacker_ids=[6001, 6002, 6003, 6004, 6005], historical_trust=0.10, use_pipeline=use_pipeline)
     test_results.append({
         "id": 7, "name": "False Hazard Propagation", "scenario": "Vehicles support fabricated hazards.",
         "expected": "Hazard Fabrication",
@@ -547,7 +559,7 @@ def run_integration_tests() -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         create_v2x_message(5001 + i, 485512000 + i*5000, 96123000 + i*5000, 1500 + i*200, 900 + i*50, 4000.0 + i*100.0, 5001 + i, val_assess=val8)
         for i in range(5)
     ]
-    res8 = run_e2e_pipeline(csia, msgs8, target_sid=5001, attacker_ids=[5001])
+    res8 = run_e2e_pipeline(csia, msgs8, target_sid=5001, attacker_ids=[5001], use_pipeline=use_pipeline)
     res8["assessment"] = AttackAssessment(
         attack_type="deferred",
         confidence=0.10,
@@ -578,8 +590,8 @@ def run_integration_tests() -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     for i in range(5):
         msgs9.append(create_v2x_message(9001 + i, 485512000, 96123000, 1500, 900, 4000.0, 9999))
     
-    res9_benign = run_e2e_pipeline(csia, msgs9, target_sid=1001, attacker_ids=[9001, 9002, 9003, 9004, 9005])
-    res9_sybil = run_e2e_pipeline(csia, msgs9, target_sid=9001, attacker_ids=[9001, 9002, 9003, 9004, 9005])
+    res9_benign = run_e2e_pipeline(csia, msgs9, target_sid=1001, attacker_ids=[9001, 9002, 9003, 9004, 9005], use_pipeline=use_pipeline)
+    res9_sybil = run_e2e_pipeline(csia, msgs9, target_sid=9001, attacker_ids=[9001, 9002, 9003, 9004, 9005], use_pipeline=use_pipeline)
     
     res9 = dict(res9_sybil)
     res9["benign_trust"] = res9_benign["final_trust_score"]
@@ -599,7 +611,7 @@ def run_integration_tests() -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         msgs10.append(create_v2x_message(1001 + i, 485512000 + i*2000, 96123000 + i*2000, 1500, 900, 4000.0 + i*100.0, 1001 + i))
     for i in range(5):
         msgs10.append(create_v2x_message(9001 + i, 485512000, 96123000, 1500, 900, 4000.0, 9999))
-    res10 = run_e2e_pipeline(csia, msgs10, target_sid=9001, attacker_ids=[9001, 9002, 9003, 9004, 9005])
+    res10 = run_e2e_pipeline(csia, msgs10, target_sid=9001, attacker_ids=[9001, 9002, 9003, 9004, 9005], use_pipeline=use_pipeline)
     
     test_results.append({
         "id": 10, "name": "Explainability", "scenario": "Request explanation of trust propagation.",
@@ -782,6 +794,16 @@ def print_walkthrough(res: Dict[str, Any]) -> None:
     print(f"  Trust Propagation    : {meta['latencies']['propagation']:.4f} ms")
     print(f"  Total CSIA           : {meta['latencies']['total']:.4f} ms")
     print()
+
+    if "pipeline_result" in meta.get("meta", {}):
+        pr = meta["meta"]["pipeline_result"]
+        print("Pipeline Orchestrator (ISCEPipeline)")
+        print(f"  Decision             : {pr['decision']}")
+        print(f"  Reason               : {pr['reason']}")
+        print(f"  Synthesized Message  : {pr['synthesized_message']['text']}")
+        print(f"  B3 Status            : {pr['b3']['status']}")
+        print(f"  Fusion Details       : {pr['fusion']}")
+        print()
     
     # Boundary validations
     print_boundary_checks(res)
@@ -878,7 +900,12 @@ def print_aggregate_summary(metrics: Dict[str, Any]) -> None:
 
 
 def main() -> None:
-    results, metrics = run_integration_tests()
+    import argparse
+    parser = argparse.ArgumentParser(description="CSIA Integration Validation Scenarios")
+    parser.add_argument("--pipeline", action="store_true", help="Run validation using the new ISCEPipeline orchestrator")
+    args = parser.parse_args()
+
+    results, metrics = run_integration_tests(use_pipeline=args.pipeline)
     
     for r in results:
         print_walkthrough(r)
