@@ -100,7 +100,7 @@ class SemanticGateClassifier:
                 "available": True,
                 "label": label_name,
                 "confidence": res.confidence,
-                "status": "Success"
+                "status": "ok"
             }
         except Exception as e:
             return {

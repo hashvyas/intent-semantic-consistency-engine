@@ -37,9 +37,15 @@ b3_semantic_gate:
     assert config.get("batch_size") == 16
     assert config.get("device") == "cpu"
 
-def test_classifier_graceful_fallback():
-    # If the model does not exist, it should return available: False
-    classifier = SemanticGateClassifier(config_path="non_existent_config.yaml")
+def test_classifier_graceful_fallback(tmp_path):
+    # Test fallback with a config pointing to a non-existent model path
+    config_file = tmp_path / "non_existent_model_config.yaml"
+    config_content = """
+b3_semantic_gate:
+  model_path: "non_existent_model_dir"
+"""
+    config_file.write_text(config_content)
+    classifier = SemanticGateClassifier(config_path=config_file)
     res = classifier.classify("some message")
     assert not res["available"]
     assert res["label"] is None
@@ -73,7 +79,7 @@ b3_semantic_gate:
     assert res["available"]
     assert res["label"] == "MALICIOUS"
     assert res["confidence"] == 0.95
-    assert res["status"] == "Success"
+    assert res["status"] == "ok"
     
     # Verify mock predictor was called correctly
     mock_predictor.predict.assert_called_once_with(["suspicious message"])

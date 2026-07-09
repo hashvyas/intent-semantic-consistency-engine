@@ -61,19 +61,27 @@ class TestPipelineEquivalence(unittest.TestCase):
         b2_payload, b2_report = csia_legacy.check_extended(legacy_msgs)
         
         # Create separate, fresh instances for the pipeline run
-        scsv_pipeline = SCSV()
-        csia_pipeline = CSIA(config_overrides=self.overrides)
-        register_custom_profiles(csia_pipeline)
-        
-        csia_pipeline._raw["motion_context"] = {
-            "inference_strategy": "probabilistic",
-            "hysteresis": 0.25,
-            "supported_contexts": supported,
-        }
-        pipeline = ISCEPipeline(scsv=scsv_pipeline, csia=csia_pipeline)
-        
-        pipeline_msgs = copy.deepcopy(messages)
-        pipeline_res = pipeline.run(pipeline_msgs, context=context)
+        from unittest.mock import patch
+        with patch("pipeline.orchestrator.classify_text") as mock_classify:
+            mock_classify.return_value = {
+                "available": False,
+                "label": None,
+                "confidence": None,
+                "status": "B3 integration unavailable"
+            }
+            scsv_pipeline = SCSV()
+            csia_pipeline = CSIA(config_overrides=self.overrides)
+            register_custom_profiles(csia_pipeline)
+            
+            csia_pipeline._raw["motion_context"] = {
+                "inference_strategy": "probabilistic",
+                "hysteresis": 0.25,
+                "supported_contexts": supported,
+            }
+            pipeline = ISCEPipeline(scsv=scsv_pipeline, csia=csia_pipeline)
+            
+            pipeline_msgs = copy.deepcopy(messages)
+            pipeline_res = pipeline.run(pipeline_msgs, context=context)
         
         # 3. Assert observational equivalence
         self.assertAlmostEqual(b2_payload["trust"], pipeline_res["b2"]["trust"], places=10)
